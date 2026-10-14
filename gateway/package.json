@@ -1,0 +1,22 @@
+{
+  "name": "logicc2api",
+  "version": "1.0.0",
+  "description": "Local OpenAI-compatible adapter for Logicc with account pool management and a web console.",
+  "license": "MIT",
+  "author": "JamesZhaoY",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JamesZhaoY/logicc2api.git"
+  },
+  "homepage": "https://github.com/JamesZhaoY/logicc2api#readme",
+  "bugs": {
+    "url": "https://github.com/JamesZhaoY/logicc2api/issues"
+  },
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": { "node": ">=22" }
+}

@@ -1,0 +1,1 @@
+window.config = Object.freeze({"api":{"url":"https://app.logicc.com/api"},"app":{"env":"production","version":"chat-frontend@20261013.095124"},"clerk":{"publishableKey":"pk_live_Y2xlcmsubG9naWNjLmNvbSQ="},"sentry":{"dsn":"https://04737f497529e5bc4ca1fd63e6064bf2@sentry.dookapi.com/18"},"tolt":{"id":"pk_ETWwNqM84TFPzg75pfTMq8Q7"}})

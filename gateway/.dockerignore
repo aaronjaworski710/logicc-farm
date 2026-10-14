@@ -1,0 +1,9 @@
+# Only application sources enter the build context. Excludes credentials and data.
+**
+!Dockerfile
+!package.json
+!server.mjs
+!pool.mjs
+!LICENSE
+!public/
+!public/**

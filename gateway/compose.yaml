@@ -1,0 +1,19 @@
+name: logicc2api
+
+services:
+  logicc2api:
+    build: .
+    image: logicc2api:local
+    init: true
+    restart: unless-stopped
+    environment:
+      PORT: "${LOGICC_PORT:-18789}"
+      LOGICC_API_KEY: "${LOGICC_API_KEY:-}"
+    ports:
+      # Keep both ports equal because the server validates the Host header port.
+      - "127.0.0.1:${LOGICC_PORT:-18789}:${LOGICC_PORT:-18789}"
+    volumes:
+      - logicc-data:/app/data
+
+volumes:
+  logicc-data:

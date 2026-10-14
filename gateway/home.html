@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <style data-replay-app-styles=""></style>
+    <link rel="icon" type="image/x-icon" sizes="128x128" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Logicc" />
+    <meta name="description" content="Logicc platform for using LLMs" />
+    <title>Logicc</title>
+    <script>
+      ;(() => {
+        const theme = document.cookie
+          .split(';')
+          .map((part) => part.trim())
+          .find((part) => part.startsWith('theme='))
+          ?.slice('theme='.length)
+        const preference = themePreferenceFromCookie(theme)
+        const colorScheme = preference === 'system' ? 'light dark' : preference
+
+        document.documentElement.dataset.theme = preference
+        document.documentElement.style.colorScheme = colorScheme
+        document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', colorScheme)
+
+        function themePreferenceFromCookie(theme) {
+          try {
+            const value = theme ? decodeURIComponent(theme) : 'system'
+
+            return ['light', 'dark', 'system'].includes(value) ? value : 'system'
+          } catch {
+            return 'system'
+          }
+        }
+      })()
+    </script>
+    <script type="module" crossorigin src="/assets/index-B7U_cYvM.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/rolldown-runtime-hePW80VL.js">
+    <link rel="modulepreload" crossorigin href="/assets/runtime-config-CJnnGQ74.js">
+    <link rel="modulepreload" crossorigin href="/assets/routing-lLhVIQGT.js">
+    <link rel="modulepreload" crossorigin href="/assets/react-vendor-D-TB5cQ4.js">
+    <link rel="modulepreload" crossorigin href="/assets/auth-vendor-CEJ-YKG6.js">
+    <link rel="modulepreload" crossorigin href="/assets/common-BtBGZBqa.js">
+    <link rel="modulepreload" crossorigin href="/assets/errors-CoomhO-H.js">
+    <link rel="modulepreload" crossorigin href="/assets/instrumentation-qBd5fRAt.js">
+    <link rel="modulepreload" crossorigin href="/assets/router-query-vendor-W4Ul0azN.js">
+    <link rel="modulepreload" crossorigin href="/assets/floating-ui-vendor-CoYIENW2.js">
+    <link rel="modulepreload" crossorigin href="/assets/ui-i18n-vendor-C0_uJjaz.js">
+    <link rel="modulepreload" crossorigin href="/assets/organizations-Bz38DqXd.js">
+    <link rel="modulepreload" crossorigin href="/assets/use-backend-client-BMxX6z3G.js">
+    <link rel="modulepreload" crossorigin href="/assets/users-BEbTi5Fn.js">
+    <link rel="modulepreload" crossorigin href="/assets/clerk-config-BfWMmGLg.js">
+    <link rel="modulepreload" crossorigin href="/assets/blocks-BHa7WPWG.js">
+    <link rel="modulepreload" crossorigin href="/assets/chevron-down-BMQ8Lgm3.js">
+    <link rel="modulepreload" crossorigin href="/assets/chevron-right-DI74p8Ds.js">
+    <link rel="modulepreload" crossorigin href="/assets/plus-CjpO3L00.js">
+    <link rel="modulepreload" crossorigin href="/assets/x-9Br-gtnB.js">
+    <link rel="modulepreload" crossorigin href="/assets/app-icons-zS04Yl7E.js">
+    <link rel="modulepreload" crossorigin href="/assets/bundle-mjs-BCZgiF-g.js">
+    <link rel="modulepreload" crossorigin href="/assets/button-r8bdE7LE.js">
+    <link rel="modulepreload" crossorigin href="/assets/dropdown-menu-DHnKE6JX.js">
+    <link rel="modulepreload" crossorigin href="/assets/toast-CIMRyI3i.js">
+    <link rel="modulepreload" crossorigin href="/assets/loading-skeleton-Djdt7pSc.js">
+    <link rel="modulepreload" crossorigin href="/assets/brand-icons-yw3iEAU9.js">
+    <link rel="modulepreload" crossorigin href="/assets/control-styles-CuzqHx5_.js">
+    <link rel="modulepreload" crossorigin href="/assets/checkbox-Biu6GESp.js">
+    <link rel="modulepreload" crossorigin href="/assets/input-D_KHk4j9.js">
+    <link rel="modulepreload" crossorigin href="/assets/settings-permissions-CkWhlgKX.js">
+    <link rel="modulepreload" crossorigin href="/assets/assistant-icons-BAs_Ss69.js">
+    <link rel="modulepreload" crossorigin href="/assets/use-chat-access-BtE_Ircb.js">
+    <link rel="modulepreload" crossorigin href="/assets/middleware-DwWjLaW1.js">
+    <link rel="modulepreload" crossorigin href="/assets/input-limits-CoHORidU.js">
+    <link rel="modulepreload" crossorigin href="/assets/dialog-BTL9ZA9t.js">
+    <link rel="modulepreload" crossorigin href="/assets/confirmation-dialog-uSUCgV-l.js">
+    <link rel="modulepreload" crossorigin href="/assets/use-debounce-IbTK28v9.js">
+    <link rel="modulepreload" crossorigin href="/assets/user-group-search-C2RwoXuV.js">
+    <link rel="modulepreload" crossorigin href="/assets/explore-plans-icons-MCT8N59E.js">
+    <link rel="modulepreload" crossorigin href="/assets/scroll-area-Svz3RfjI.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-Bya5XM1J.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="/runtime-config.js"></script>
+  </body>
+</html>
