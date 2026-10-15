@@ -277,3 +277,18 @@ Gateway вешается в `~/AppData/Local/hermes/config.yaml` -> `custom_prov
 
 ### Фикс _secret
 `*_env`-ссылка в конфиге больше не глушит прямое значение: env пуст -> берётся поле из config.json. (Раньше catchall молча отваливался, если env не задан.)
+
+
+## v1.8 — Live-лента запросов + reasoning в дашборде
+
+### Gateway: GET /api/requests
+Все запросы через шлюз (chat/models/check) пишутся в ring-buffer (2000) и отдаются через `/api/requests?limit=N&kind=chat` (header X-Logicc-Admin: 1). Поля: ts, kind, model, account (маскирован), status, httpStatus, ms, ttftMs, attempts, stream, usage, error.
+
+### Дашборд: вкладка Requests
+Live-таблица (авто-обновление 4с, фильтр по kind): время, модель, аккаунт, OK/ERR, ms, TTFT, токены in/out, попытки, ошибка.
+
+### Reasoning effort
+Chat completion test: dropdown Reasoning (off/low/medium/high) -> body.reasoning_effort -> gateway форвардит как reasoningEffort в Logicc API. Проверено: claude-5.5-opus high = DASH-OK 12.2s.
+
+### Прокси в дашборде
+POST /api/gateway/requests {limit, kind} — дашборд сам добавляет admin-заголовок.

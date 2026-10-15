@@ -385,9 +385,11 @@ def gw_restart():
     return {"ok": code == 200, "gw_code": code}
 
 
-def chat_test(model):
+def chat_test(model, effort=None):
     payload = {"model": model, "max_tokens": 30,
                "messages": [{"role": "user", "content": "Say DASH-OK"}]}
+    if effort:
+        payload["reasoning_effort"] = effort
     t0 = time.time()
     code, body = jpost(GW + "/v1/chat/completions", payload, timeout=180)
     dt = round(time.time() - t0, 1)
@@ -396,7 +398,19 @@ def chat_test(model):
         txt = json.loads(body)["choices"][0]["message"]["content"][:100]
     except Exception:
         txt = body[:150]
-    return {"ok": code == 200, "code": code, "sec": dt, "reply": txt}
+    return {"ok": code == 200, "code": code, "sec": dt, "reply": txt, "effort": effort or "-"}
+
+
+def gw_requests(limit=60, kind=None):
+    url = GW + "/api/requests?limit=%d" % limit
+    if kind:
+        url += "&kind=" + kind
+    try:
+        r = urllib.request.urlopen(urllib.request.Request(url, headers={"X-Logicc-Admin": "1"}), timeout=15)
+        d = json.loads(r.read().decode())
+        return {"ok": True, "requests": d.get("requests", [])}
+    except Exception as e:
+        return {"ok": False, "err": str(e)[:120]}
 
 
 OPENCODE_MODELS = ["gpt-6-luna", "gpt-6.1-sol", "gemini-3.8-flash", "gemini-2.5-pro",
@@ -518,7 +532,9 @@ class H(BaseHTTPRequestHandler):
             elif p == "/api/opencode/install":
                 self._send(opencode_install())
             elif p == "/api/chat/test":
-                self._send(chat_test(body.get("model", "gpt-6-luna")))
+                self._send(chat_test(body.get("model", "gpt-6-luna"), body.get("reasoning_effort")))
+            elif p == "/api/gateway/requests":
+                self._send(gw_requests(int(body.get("limit", 60)), body.get("kind")))
             elif p == "/api/mail/imap_add":
                 self._send(mail_imap_add(body))
             else:

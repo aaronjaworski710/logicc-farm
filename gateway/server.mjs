@@ -333,6 +333,18 @@ export function createAdapter({ env = process.env, dataFile = env.LOGICC_DATA_FI
           const models = await track(req, res, 'models', (account, _trace, signal) => modelsFor(account, signal));
           return json(res, 200, { models, updatedAt: pool.data.modelsUpdatedAt });
         }
+        if (url.pathname === '/api/requests' && req.method === 'GET') {
+          const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 60) || 60, 1), 500);
+          const kind = url.searchParams.get('kind');
+          const list = kind ? pool.data.requests.filter(r => r.kind === kind) : pool.data.requests;
+          return json(res, 200, { requests: list.slice(0, limit).map(r => ({
+            id: r.id, ts: r.startedAt, kind: r.kind, model: r.model, status: r.status,
+            httpStatus: r.httpStatus || null, ms: r.durationMs ?? null, ttftMs: r.ttftMs ?? null,
+            attempts: r.attempts || 1, stream: Boolean(r.stream),
+            account: r.accountName ? String(r.accountName).replace(/^(.{3})[^@]*(@.*)$/, '$1***$2') : null,
+            usage: r.usage || null, error: r.error || null,
+          })) });
+        }
         throw new HttpError(404, '管理接口不存在');
       }
       if (url.pathname === '/__set_token' && req.method === 'POST') {

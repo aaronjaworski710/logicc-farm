@@ -177,6 +177,7 @@
       <button id="tab-wave" data-t="wave" role="tab" aria-selected="false" aria-controls="t-wave" tabindex="-1">Wave</button>
       <button id="tab-gw" data-t="gw" role="tab" aria-selected="false" aria-controls="t-gw" tabindex="-1">Gateway</button>
       <button id="tab-log" data-t="log" role="tab" aria-selected="false" aria-controls="t-log" tabindex="-1">Activity log</button>
+      <button id="tab-req" data-t="req" role="tab" aria-selected="false" aria-controls="t-req" tabindex="-1">Requests</button>
     </nav>
 
     <section id="t-ov" role="tabpanel" aria-labelledby="tab-ov" class="space-y-5">
@@ -304,12 +305,18 @@
       <article class="card">
         <div class="card-header"><h3 class="card-title">Chat completion test</h3><p class="card-description">Send a prompt through the gateway to verify a model response.</p></div>
         <div class="card-content">
-          <div class="grid items-end gap-4 md:grid-cols-[240px_1fr_auto]">
+          <div class="grid items-end gap-4 md:grid-cols-[220px_140px_1fr_auto]">
             <div>
               <label for="chat-model" class="mb-2 block text-xs font-medium">Model</label>
               <div class="relative">
                 <select id="chat-model" class="input mono text-xs"><option value="">Loading models…</option></select>
                 <svg class="pointer-events-none absolute right-3 top-3.5 text-zinc-500" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+              </div>
+            </div>
+            <div>
+              <label for="chat-effort" class="mb-2 block text-xs font-medium">Reasoning</label>
+              <div class="relative">
+                <select id="chat-effort" class="input mono text-xs"><option value="">off</option><option value="low">low</option><option value="medium">medium</option><option value="high">high</option></select>
               </div>
             </div>
             <div><label for="chat-prompt" class="mb-2 block text-xs font-medium">Prompt</label><input id="chat-prompt" class="input" value="Say hello in one short sentence." placeholder="Enter a test prompt…" autocomplete="off"></div>
@@ -330,6 +337,28 @@
         <div class="separator"></div>
         <pre id="logbox" class="terminal h-[480px] max-h-[65vh]" aria-label="Activity log">Waiting for log output…</pre>
         <div class="flex items-center justify-between border-t border-border px-6 py-3 text-[10px] text-zinc-500"><span class="mono" id="log-count">0 lines</span><span>Auto-scroll enabled</span></div>
+      </article>
+    </section>
+
+    <section id="t-req" class="hide" role="tabpanel" aria-labelledby="tab-req">
+      <article class="card">
+        <div class="card-header flex flex-wrap items-start justify-between gap-4 pb-5">
+          <div><h3 class="card-title">Gateway requests</h3><p class="card-description">Live-лента всех запросов через шлюз: модель, аккаунт, статус, время, токены. Авто-обновление 4с.</p></div>
+          <div class="flex items-center gap-3">
+            <select id="req-kind" class="input mono text-xs w-28"><option value="">all</option><option value="chat">chat</option><option value="models">models</option><option value="check">check</option></select>
+            <button id="b-req-refresh" class="btn btn-outline">Refresh</button>
+          </div>
+        </div>
+        <div class="separator"></div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead><tr class="border-b border-border text-left text-[10px] uppercase tracking-wider text-zinc-500">
+              <th class="px-4 py-2">Time</th><th class="px-4 py-2">Kind</th><th class="px-4 py-2">Model</th><th class="px-4 py-2">Account</th><th class="px-4 py-2">Status</th><th class="px-4 py-2 text-right">ms</th><th class="px-4 py-2 text-right">TTFT</th><th class="px-4 py-2 text-right">Tok in/out</th><th class="px-4 py-2 text-right">Try</th><th class="px-4 py-2">Error</th>
+            </tr></thead>
+            <tbody id="req-body"><tr><td colspan="10" class="px-4 py-6 text-center text-zinc-500">Loading…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="flex items-center justify-between border-t border-border px-6 py-3 text-[10px] text-zinc-500"><span class="mono" id="req-count">0 requests</span><span id="req-ago">—</span></div>
       </article>
     </section>
 
@@ -676,10 +705,10 @@
       }
       const started = performance.now();
       $('chat-out').setAttribute('aria-busy', 'true');
-      act('/api/chat/test', { model, prompt }, 'chat-msg', result => {
+      act('/api/chat/test', { model, prompt, reasoning_effort: $('chat-effort').value || null }, 'chat-msg', result => {
         const elapsed = result.sec ?? ((performance.now() - started) / 1000).toFixed(2);
         $('chat-msg').textContent = (result.ok ? 'OK' : 'FAIL') + ' · ' + elapsed + 's';
-        $('chat-out').textContent = (result.ok ? 'OK ' : 'FAIL ') + (result.code ?? '—') + ' · ' + elapsed + 's\n\n' + (result.reply || '');
+        $('chat-out').textContent = (result.ok ? 'OK ' : 'FAIL ') + (result.code ?? '—') + ' · ' + elapsed + 's · reasoning=' + (result.effort || '-') + '\n\n' + (result.reply || '');
       }, 'b-chat', 'Chat test').finally(() => {
         $('chat-out').setAttribute('aria-busy', 'false');
       });
@@ -690,6 +719,42 @@
         $('b-chat').click();
       }
     };
+    async function refreshReq() {
+      try {
+        const r = await fetch('/api/gateway/requests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ limit: 80, kind: $('req-kind').value || null }) });
+        const d = await r.json();
+        const tb = $('req-body');
+        if (!d.ok) { tb.innerHTML = '<tr><td colspan="10" class="px-4 py-6 text-center text-red-400">' + (d.err || 'gateway unavailable') + '</td></tr>'; return; }
+        const rs = d.requests || [];
+        $('req-count').textContent = rs.length + ' requests';
+        if (!rs.length) { tb.innerHTML = '<tr><td colspan="10" class="px-4 py-6 text-center text-zinc-500">Запросов ещё не было</td></tr>'; return; }
+        tb.innerHTML = rs.map(x => {
+          const tm = new Date(x.ts).toLocaleTimeString('ru-RU');
+          const ok = x.status === 'success';
+          const u = x.usage || {};
+          const err = String(x.error || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+          return '<tr class="border-b border-border/50 hover:bg-zinc-900/40">' +
+            '<td class="px-4 py-1.5 mono whitespace-nowrap">' + tm + '</td>' +
+            '<td class="px-4 py-1.5"><span class="badge badge-outline mono">' + x.kind + '</span></td>' +
+            '<td class="px-4 py-1.5 mono">' + (x.model || '—') + '</td>' +
+            '<td class="px-4 py-1.5 mono text-zinc-400">' + (x.account || '—') + '</td>' +
+            '<td class="px-4 py-1.5">' + (ok ? '<span class="text-emerald-400">OK' + (x.stream ? ' stream' : '') + '</span>' : '<span class="text-red-400">ERR ' + (x.httpStatus || '') + '</span>') + '</td>' +
+            '<td class="px-4 py-1.5 text-right mono">' + (x.ms ?? '—') + '</td>' +
+            '<td class="px-4 py-1.5 text-right mono text-zinc-400">' + (x.ttftMs ?? '—') + '</td>' +
+            '<td class="px-4 py-1.5 text-right mono">' + (u.prompt_tokens ?? 0) + '/' + (u.completion_tokens ?? 0) + '</td>' +
+            '<td class="px-4 py-1.5 text-right mono">' + (x.attempts ?? 1) + '</td>' +
+            '<td class="px-4 py-1.5 text-zinc-500 max-w-[200px] truncate" title="' + err + '">' + err + '</td></tr>';
+        }).join('');
+        $('req-ago').textContent = 'updated ' + new Date().toLocaleTimeString('ru-RU');
+      } catch (e) {
+        $('req-body').innerHTML = '<tr><td colspan="10" class="px-4 py-6 text-center text-red-400">' + e.message + '</td></tr>';
+      }
+    }
+    $('b-req-refresh').onclick = () => refreshReq();
+    $('req-kind').onchange = () => refreshReq();
+    setInterval(() => { if (!$('t-req').classList.contains('hide')) refreshReq(); }, 4000);
+    refreshReq();
+
     $('b-bank-refresh').onclick = () => refreshBank(true);
     $('b-log-refresh').onclick = () => refreshLog(true);
 
