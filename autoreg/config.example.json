@@ -15,8 +15,7 @@
       "prefix": "lg"
     },
     "tonline": {
-      "pool_file": "pool/tonline_1000.txt",
-      "_comment": "BUNDLED: 1000 живых t-online.de ящиков в pool/tonline_1000.txt (формат email:pass). Свой пул: укажите путь к файлу."
+      "pool_file": "path/to/working_mails.txt"
     },
     "imap_pool": {
       "pool_file": "imap_pool.txt"
@@ -47,5 +46,18 @@
   },
   "sidecar": {
     "url": "http://127.0.0.1:8877"
+  },
+  "captcha": {
+    "providers": [
+      "sidecar",
+      "2captcha",
+      "yescaptcha",
+      "capsolver"
+    ],
+    "_comment": "Порядок бэкендов капчи. sidecar=бесплатный локальный :8877. Остальные по ключам.",
+    "yescaptcha_key_env": "YESCAPTCHA_KEY",
+    "capsolver_key_env": "CAPSOLVER_KEY",
+    "yescaptcha_key": "",
+    "capsolver_key": ""
   }
 }

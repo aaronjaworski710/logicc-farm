@@ -169,13 +169,101 @@ def solve_free(tries=3):
         time.sleep(5)
     return None
 
+def _captcha_cfg():
+    try:
+        return MP.load_cfg().get("captcha", {})
+    except Exception:
+        return {}
+
+
+def _cap_key(name):
+    cfg = _captcha_cfg()
+    k = (cfg.get(name + "_key") or "").strip()
+    if not k:
+        env = (cfg.get(name + "_key_env") or "").strip()
+        if env:
+            k = os.environ.get(env, "").strip()
+    return k
+
+
+def _json_api(url, payload, timeout=30):
+    req = urllib.request.Request(url, data=json.dumps(payload).encode(),
+                                 headers={"Content-Type": "application/json", "User-Agent": UA})
+    return json.loads(urllib.request.urlopen(req, timeout=timeout).read())
+
+
+def solve_yescaptcha():
+    """YesCaptcha: TurnstileTaskProxyless (~$0.0012). Ключ: captcha.yescaptcha_key / _key_env."""
+    k = _cap_key("yescaptcha")
+    if not k:
+        return None
+    try:
+        d = _json_api("https://api.yescaptcha.com/createTask",
+                      {"clientKey": k, "task": {"type": "TurnstileTaskProxyless",
+                                               "websiteURL": PAGE, "websiteKey": SITEKEY}})
+        tid = d.get("taskId")
+        if not tid:
+            log("yescaptcha:", str(d)[:140]); return None
+        for _ in range(30):
+            time.sleep(5)
+            r = _json_api("https://api.yescaptcha.com/getTaskResult", {"clientKey": k, "taskId": tid})
+            if r.get("status") == "ready":
+                return (r.get("solution") or {}).get("token")
+            if r.get("errorId"):
+                log("yescaptcha err:", str(r)[:140]); return None
+    except Exception as e:
+        log("yescaptcha fail:", str(e)[:140])
+    return None
+
+
+def solve_capsolver():
+    """CapSolver: AntiTurnstileTaskProxyLess (~$0.0008-0.0012). Ключ: captcha.capsolver_key / _key_env."""
+    k = _cap_key("capsolver")
+    if not k:
+        return None
+    try:
+        d = _json_api("https://api.capsolver.com/createTask",
+                      {"clientKey": k, "task": {"type": "AntiTurnstileTaskProxyLess",
+                                                "websiteURL": PAGE, "websiteKey": SITEKEY}})
+        tid = d.get("taskId")
+        if not tid:
+            log("capsolver:", str(d)[:140]); return None
+        for _ in range(30):
+            time.sleep(5)
+            r = _json_api("https://api.capsolver.com/getTaskResult", {"clientKey": k, "taskId": tid})
+            st = r.get("status")
+            if st == "ready":
+                return (r.get("solution") or {}).get("token")
+            if r.get("errorId"):
+                log("capsolver err:", str(r)[:140]); return None
+    except Exception as e:
+        log("capsolver fail:", str(e)[:140])
+    return None
+
+
+CAPTCHA_BACKENDS = [
+    ("sidecar", "sidecar(FREE)", solve_free),
+    ("2captcha", "2captcha($)", solve_2captcha),
+    ("yescaptcha", "yescaptcha($)", solve_yescaptcha),
+    ("capsolver", "capsolver($)", solve_capsolver),
+]
+
+
 def solve_turnstile():
-    tok = solve_free()          # FREE first: sidecar :8877 real_page=false
-    if tok:
-        print("    captcha: FREE sidecar", flush=True)
-        return tok
-    print("    captcha: fallback 2captcha", flush=True)
-    return solve_2captcha()     # платный фолбэк (~$0.002)
+    """Мульти-бэкенд: порядок из config.json captcha.providers (default: free -> 2captcha -> yes -> capsolver)."""
+    order = _captcha_cfg().get("providers") or [b[0] for b in CAPTCHA_BACKENDS]
+    for name in order:
+        for bname, label, fn in CAPTCHA_BACKENDS:
+            if bname != name:
+                continue
+            try:
+                tok = fn()
+            except Exception as e:
+                log(label, "crash:", str(e)[:100]); tok = None
+            if tok:
+                print("    captcha:", label, flush=True)
+                return tok
+    return None
 
 def clerk_post(jar, path, fields):
     url = BASE_CLERK + path
@@ -424,45 +512,65 @@ def gw_auto_import(rec):
 
 def main():
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+    max_retry = int(os.environ.get("LG_RETRY", "2"))   # доп. попытки почты на слот при фейле
+    pace = os.environ.get("LG_PACE", "20-40")          # пауза между акками, сек диапазон
+    pmin, pmax = (int(x) for x in pace.split("-")) if "-" in pace else (int(pace), int(pace))
     chain = MP.MailChain(MP.load_cfg())
     log("mail providers:", " -> ".join(p.name for p in chain.chain))
+    log("captcha order:", " -> ".join(_captcha_cfg().get("providers") or [b[0] for b in CAPTCHA_BACKENDS]))
     used = set()
     if os.path.exists(BANK):
         for line in open(BANK, encoding="utf-8"):
             try: used.add(json.loads(line)["email"])
             except Exception: pass
     ok = fail = 0
+    stats = {}   # mail_provider -> [ok, fail]
+    exhausted = False
     for i in range(n):
-        prov, r = None, None
-        for _ in range(300):
-            prov, r = chain.next_address()
-            if r is None or r[0] not in used:
+        slot_ok = False
+        for att in range(max_retry + 1):
+            prov, r = None, None
+            for _ in range(300):
+                prov, r = chain.next_address()
+                if r is None or r[0] not in used:
+                    break
+            if r is None:
+                log("mail exhausted (all providers)"); exhausted = True; break
+            em, pw, wait_code = r
+            used.add(em)
+            st = stats.setdefault(prov, [0, 0])
+            log(f"[{i+1}/{n}] reg {em} via {prov}" + (f" (retry {att})" if att else ""))
+            rec = register(em, pw, wait_code)
+            rec["mail_provider"] = prov
+            if rec.get("client_cookie") and rec.get("session_id"):
+                org = activate_account(rec)
+                if org:
+                    rec["activated"] = True
+                    rec["org_id"] = org
+                    log("activated", org)
+            with open(BANK, "a", encoding="utf-8") as f:
+                f.write(json.dumps(rec, ensure_ascii=False) + chr(10))
+            if rec.get("activated"):
+                gw_auto_import(rec)
+            if rec.get("client_cookie") and rec.get("session_id"):
+                ok += 1; st[0] += 1; slot_ok = True
+                log("OK", rec["session_id"])
                 break
-        if r is None:
-            log("mail exhausted (all providers)"); break
-        em, pw, wait_code = r
-        used.add(em)
-        log(f"[{i+1}/{n}] reg {em} via {prov}")
-        rec = register(em, pw, wait_code)
-        rec["mail_provider"] = prov
-        if rec.get("client_cookie") and rec.get("session_id"):
-            org = activate_account(rec)
-            if org:
-                rec["activated"] = True
-                rec["org_id"] = org
-                log("activated", org)
-        with open(BANK, "a", encoding="utf-8") as f:
-            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
-        if rec.get("activated"):
-            gw_auto_import(rec)
-        if rec.get("client_cookie") and rec.get("session_id"):
-            ok += 1
-            log("OK", rec["session_id"])
-        else:
-            fail += 1
-            log("FAIL", rec.get("err"), str(rec.get("body", ""))[:200])
-        time.sleep(random.randint(20, 40))
-    log(f"DONE ok={ok} fail={fail}")
+            fail += 1; st[1] += 1
+            err = str(rec.get("err") or "")
+            log("FAIL", err, str(rec.get("body", ""))[:160])
+            # блокировка домена/почты — мгновенно следующая почта (без паузы)
+            if "blocked" in err or "not_allowed" in err:
+                continue
+            time.sleep(10)   # короткая пауза перед ретраем (капча/сеть)
+        if exhausted:
+            break
+        if i < n - 1:
+            time.sleep(random.randint(pmin, pmax))
+    log(f"DONE ok={ok} fail={fail} attempts={ok+fail}")
+    for p, (o, fl) in sorted(stats.items()):
+        log(f"  by mail [{p}]: ok={o} fail={fl}")
+
 
 if __name__ == "__main__":
     main()

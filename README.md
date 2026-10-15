@@ -255,3 +255,25 @@ Gateway вешается в `~/AppData/Local/hermes/config.yaml` -> `custom_prov
 
 ### Относительные пути пулов
 `tonline.pool_file` и `imap_pool.pool_file` теперь резолвятся от папки софта — клон репы работает без правки конфигов.
+
+
+## v1.7 — Мульти-капча, mail.tm, ретраи, статистика
+
+### Капча: 4 бэкенда с авто-фолбэком
+Порядок в `config.json -> captcha.providers` (default): `sidecar -> 2captcha -> yescaptcha -> capsolver`
+- **sidecar** — бесплатный локальный :8877 (Turnstile ~18с, $0)
+- **2captcha** — ключ из LG_KEYS файла (богатейший по балансу)
+- **yescaptcha** — TurnstileTaskProxyless, ключ: `captcha.yescaptcha_key` или env `YESCAPTCHA_KEY`
+- **capsolver** — AntiTurnstileTaskProxyLess, ключ: `captcha.capsolver_key` или env `CAPSOLVER_KEY`
+Бэкенды без ключа молча скипаются.
+
+### Почта: +mail.tm (7-й провайдер)
+`mailtm` — публичная темп-почта без регистрации (домены ротируются, maxxspace.com и др). Для Logicc блокируется Clerk — для других ферм. Итого провайдеров: catchall, imap, imap_pool, tonline, voidash, tempmail_lol, mailtm.
+
+### Рег: ретраи и статистика
+- `LG_RETRY=2` — доп. попытки с новой почтой на слот при фейле (блокировка домена → мгновенный следующий ящик)
+- `LG_PACE=20-40` — пауза между акками
+- Итог волны: `DONE ok/fail/attempts` + разбивка `by mail [provider]`
+
+### Фикс _secret
+`*_env`-ссылка в конфиге больше не глушит прямое значение: env пуст -> берётся поле из config.json. (Раньше catchall молча отваливался, если env не задан.)

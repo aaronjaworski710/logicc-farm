@@ -16,7 +16,7 @@ mail_providers.py — сменные почтовые провайдеры дл�
 
 Секреты — только через env (поля *_env в конфиге) или config.json локально (не коммитить).
 """
-import os, re, json, time, random, string, imaplib, email as emlib, ssl
+import os, re, json, time, random, string, imaplib, email as emlib, ssl, uuid
 import urllib.request, urllib.parse, urllib.error
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -39,10 +39,12 @@ def _save_state(st):
 
 
 def _secret(cfg_block, key):
-    """Значение секрета: прямое поле или *_env-ссылка."""
+    """Значение секрета: *_env-ссылка, при незаполненном env — фолбэк на прямое поле."""
     envk = cfg_block.get(key + "_env")
     if envk:
-        return os.environ.get(envk, "")
+        v = os.environ.get(envk, "").strip()
+        if v:
+            return v
     return cfg_block.get(key, "")
 
 
@@ -387,8 +389,66 @@ class TempMailLol(Provider):
         return addr, None, wait_code
 
 
+class MailTm(Provider):
+    """mail.tm — публичная темп-почта, БЕЗ регистрации: аккаунт+токен создаются на лету.
+    Домены ротируются (maxxspace.com и др). Logicc/Clerk БЛОКИРУЕТ — для других ферм."""
+    name = "mailtm"
+    API = "https://api.mail.tm"
+
+    def __init__(self, cfg):
+        self.domain = (cfg.get("domain") or "").strip()
+
+    def _j(self, path, data=None, tok=None, method=None):
+        req = urllib.request.Request(self.API + path,
+            data=json.dumps(data).encode() if data else None,
+            headers={"Content-Type": "application/json",
+                     **({"Authorization": "Bear" + "er " + tok} if tok else {})},
+            method=method or ("POST" if data else "GET"))
+        try:
+            return json.load(urllib.request.urlopen(req, timeout=25))
+        except urllib.error.HTTPError as e:
+            return {"_err": e.code, "_body": e.read()[:120].decode(errors="replace")}
+        except Exception as e:
+            return {"_err": str(e)[:80]}
+
+    def next_address(self):
+        dom = self.domain
+        if not dom:
+            d = self._j("/domains")
+            hits = (d.get("hydra:member") or d.get("data") or []) if isinstance(d, dict) else []
+            if not hits:
+                return None
+            dom = hits[0].get("domain")
+        pw = uuid.uuid4().hex[:16]
+        em = "farm" + uuid.uuid4().hex[:10] + "@" + dom
+        acc = self._j("/accounts", {"address": em, "password": pw})
+        tok = self._j("/token", {"address": em, "password": pw})
+        jwt = tok.get("token") if isinstance(tok, dict) else None
+        if not jwt:
+            return None
+
+        def wait_code(since_ts, timeout=300):
+            end = time.time() + timeout
+            while time.time() < end:
+                try:
+                    ms = self._j("/messages", tok=jwt)
+                    for m in (ms.get("hydra:member") or []):
+                        full = self._j("/messages/" + m["id"], tok=jwt)
+                        txt = (full.get("text") or "") + " ".join(full.get("html") or [])
+                        mt = CODE_RE.search(txt)
+                        code = mt.group(1) if mt else None
+                        if code:
+                            return code
+                except Exception:
+                    pass
+                time.sleep(5)
+            return None
+
+        return em, pw, wait_code
+
+
 BUILDERS = {"tonline": TOnline, "catchall": CatchAll, "imap": GenericIMAP, "imap_pool": ImapPool,
-            "voidash": Voidash, "tempmail_lol": TempMailLol}
+            "voidash": Voidash, "tempmail_lol": TempMailLol, "mailtm": MailTm}
 
 
 class MailChain:
