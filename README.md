@@ -7,8 +7,24 @@
 ```
 autoreg/logicc_reg.py   — авторегистратор + авто-активация (stdlib + curl_cffi)
 autoreg/activate.py     — отдельный активатор аккаунтов из банка
+autoreg/dashboard.py    — control-plane дашборд (stdlib, порт 8560)
+autoreg/index.html      — UI дашборда (dark theme, авто-обновление 5с)
 gateway/                — logicc2api (MIT, JamesZhaoY) + патч заголовков — OpenAI-compat прокси с пулом
 ```
+
+## Дашборд
+
+```bash
+python autoreg/dashboard.py     # http://127.0.0.1:8560
+```
+
+- **Обзор**: банк (total/complete/activated/dead), статус волны (pid-детект через CIM), gateway UP/модели, почта в пуле, диск, балансы 2captcha
+- **Волна**: старт N аккаунтов (detached-процесс, лог в reg_run.log) / стоп (taskkill дерева)
+- **Действия**: активировать 1 акк, поштучный импорт в gateway (skip 409-дублей), рестарт gateway
+- **Gateway**: список моделей + тест chat completion с замером секунд
+- **Банк**: таблица аккаунтов (email маскируется), **Лог**: tail reg_run.log с подсветкой
+
+API для агентов: `GET /api/status`, `GET /api/bank`, `POST /api/wave/start {n}`, `/api/wave/stop`, `/api/activate`, `/api/gateway/import`, `/api/gateway/restart`, `/api/chat/test {model}`.
 
 ## Как работает авторег
 
