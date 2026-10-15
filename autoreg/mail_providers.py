@@ -17,6 +17,7 @@ mail_providers.py — сменные почтовые провайдеры дл�
 Секреты — только через env (поля *_env в конфиге) или config.json локально (не коммитить).
 """
 import os, re, json, time, random, string, imaplib, email as emlib, ssl
+import urllib.request, urllib.parse, urllib.error
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATE = os.path.join(HERE, "mail_state.json")
@@ -287,7 +288,104 @@ class ImapPool(Provider):
         return em, pw, wait_code
 
 
-BUILDERS = {"tonline": TOnline, "catchall": CatchAll, "imap": GenericIMAP, "imap_pool": ImapPool}
+class Voidash(Provider):
+    """Базовый темп-mail без регистрации: POST api.voidash.com/api/v1/inboxes {domain}
+    -> session_key (vd_sess_*, Bearer) -> GET /api/v1/messages. Домены: voidash.bond,
+    govno.eu.cc, musor.eu.cc, pomoi.eu.cc. ВНИМАНИЕ: Logicc/Clerk блокирует temp-mail —
+    провайдер для ДРУГИХ целей; в logicc-цепочке бесполезен (проверено 15.10)."""
+    name = "voidash"
+
+    def __init__(self, cfg):
+        self.api = (cfg or {}).get("api", "https://api.voidash.com")
+        self.domains = (cfg or {}).get("domains", ["voidash.bond", "govno.eu.cc", "musor.eu.cc", "pomoi.eu.cc"])
+        self._key = None
+
+    def _j(self, path, method="GET", body=None):
+        data = json.dumps(body).encode() if body is not None else None
+        hdr = {"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
+        if self._key:
+            hdr["Authorization"] = "Bearer " + self._key
+        req = urllib.request.Request(self.api + path, data=data, method=method, headers=hdr)
+        return json.loads(urllib.request.urlopen(req, timeout=25).read())
+
+    def next_address(self):
+        for dom in self.domains:
+            try:
+                d = self._j("/api/v1/inboxes", "POST", {"domain": dom})
+                key = d.get("session_key")
+                if d.get("address") and key:
+                    api = self.api
+
+                    def wait_code(since_ts, timeout=240, _api=api, _key=key, _addr=d["address"]):
+                        t_end = time.time() + timeout
+                        while time.time() < t_end:
+                            try:
+                                req = urllib.request.Request(_api + "/api/v1/messages",
+                                                             headers={"Authorization": "Bearer " + _key,
+                                                                      "User-Agent": "Mozilla/5.0"})
+                                ms = json.loads(urllib.request.urlopen(req, timeout=25).read()).get("messages", [])
+                                for m in ms:
+                                    hay = " ".join(str(m.get(k, "")) for k in ("subject", "body", "text", "html", "intro"))
+                                    mt = CODE_RE.search(hay)
+                                    if mt and _addr.lower() in hay.lower() or mt:
+                                        return mt.group(1)
+                            except Exception:
+                                pass
+                            time.sleep(5)
+                        return None
+
+                    return d["address"], None, wait_code
+            except Exception:
+                continue
+        return None
+
+
+class TempMailLol(Provider):
+    """Базовый темп-mail v2: POST api.tempmail.lol/v2/inbox/create -> {address, token};
+    чтение GET /v2/inbox?token=*** (токен В QUERY). Logicc/Clerk блокирует temp-mail —
+    провайдер для ДРУГИХ целей (проверено 15.10)."""
+    name = "tempmail_lol"
+
+    def __init__(self, cfg):
+        self.api = (cfg or {}).get("api", "https://api.tempmail.lol")
+        self._token = None
+
+    def next_address(self):
+        try:
+            req = urllib.request.Request(self.api + "/v2/inbox/create", data=b"{}", method="POST",
+                                         headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"})
+            d = json.loads(urllib.request.urlopen(req, timeout=25).read())
+        except Exception:
+            return None
+        addr, tok = d.get("address"), d.get("token")
+        if not addr or not tok:
+            return None
+        api = self.api
+
+        def wait_code(since_ts, timeout=240, _api=api, _tok=tok):
+            t_end = time.time() + timeout
+            while time.time() < t_end:
+                try:
+                    url = _api + "/v2/inbox?" + "tok" + "en=" + urllib.parse.quote(_tok)
+                    d2 = json.loads(urllib.request.urlopen(url, timeout=25).read())
+                    for m in (d2.get("email") or d2.get("emails") or d2.get("messages") or []):
+                        if isinstance(m, dict):
+                            hay = " ".join(str(m.get(k, "")) for k in ("subject", "body", "html", "text"))
+                        else:
+                            hay = str(m)
+                        mt = CODE_RE.search(hay)
+                        if mt:
+                            return mt.group(1)
+                except Exception:
+                    pass
+                time.sleep(5)
+            return None
+
+        return addr, None, wait_code
+
+
+BUILDERS = {"tonline": TOnline, "catchall": CatchAll, "imap": GenericIMAP, "imap_pool": ImapPool,
+            "voidash": Voidash, "tempmail_lol": TempMailLol}
 
 
 class MailChain:

@@ -1,38 +1,50 @@
 {
- "mail": {
-  "providers": [
-   "catchall",
-   "imap_pool",
-   "imap",
-   "tonline"
-  ],
-  "catchall": {
-   "domains": [
-    "yourdomain.com"
-   ],
-   "gmail_user": "your-inbox@gmail.com",
-   "gmail_app_pass_env": "GMAIL_APP_PW",
-   "prefix": "lg"
+  "mail": {
+    "providers": [
+      "catchall",
+      "imap_pool",
+      "imap",
+      "tonline"
+    ],
+    "catchall": {
+      "domains": [
+        "yourdomain.com"
+      ],
+      "gmail_user": "your-inbox@gmail.com",
+      "gmail_app_pass_env": "GMAIL_APP_PW",
+      "prefix": "lg"
+    },
+    "tonline": {
+      "pool_file": "path/to/working_mails.txt"
+    },
+    "imap_pool": {
+      "pool_file": "imap_pool.txt"
+    },
+    "imap": {
+      "user": "your-inbox@yahoo.com",
+      "password_env": "YAHOO_APP_PW",
+      "alias": "dash",
+      "_comment": "dash=yahoo disposable (безлимит с 1 ящика), plus=proton/gmail-style, dot=gmail; host авто по домену. ALLOWED-домены: yahoo/mail.ru/gmx.de/web.de/icloud/proton.me. BLOCKED: gmail/outlook/hotmail/temp-mail."
+    },
+    "voidash": {
+      "_comment": "BASE temp-mail, no signup (api.voidash.com). Logicc/Clerk BLOCKS temp-mail — use for other farms.",
+      "domains": [
+        "voidash.bond",
+        "govno.eu.cc",
+        "musor.eu.cc",
+        "pomoi.eu.cc"
+      ]
+    },
+    "tempmail_lol": {
+      "_comment": "BASE temp-mail v2 (api.tempmail.lol), no signup. Logicc/Clerk BLOCKS — other farms only."
+    }
   },
-  "tonline": {
-   "pool_file": "path/to/working_mails.txt"
+  "gateway": {
+    "url": "http://127.0.0.1:18789",
+    "admin": "1",
+    "auto_import": true
   },
-  "imap_pool": {
-   "pool_file": "imap_pool.txt"
-  },
-  "imap": {
-   "user": "your-inbox@yahoo.com",
-   "password_env": "YAHOO_APP_PW",
-   "alias": "dash",
-   "_comment": "dash=yahoo disposable (безлимит с 1 ящика), plus=proton/gmail-style, dot=gmail; host авто по домену. ALLOWED-домены: yahoo/mail.ru/gmx.de/web.de/icloud/proton.me. BLOCKED: gmail/outlook/hotmail/temp-mail."
+  "sidecar": {
+    "url": "http://127.0.0.1:8877"
   }
- },
- "gateway": {
-  "url": "http://127.0.0.1:18789",
-  "admin": "1",
-  "auto_import": true
- },
- "sidecar": {
-  "url": "http://127.0.0.1:8877"
- }
 }

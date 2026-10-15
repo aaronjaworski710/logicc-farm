@@ -215,3 +215,27 @@ opencode run -m logicc/gpt-6-luna "hello"
 ### Дашборд
 - Badge **Mail pool** теперь показывает живую цепочку из config: `catchall(N dom) → imap_pool(N) → tonline`.
 - `/api/status → mail`: провайдеры, размер imap_pool, число catchall-доменов, alias-ящик (маскируется).
+
+
+## v1.5 — Базовые темп-почты + интеграция с Hermes
+
+### Темп-mail провайдеры (база, без регистрации)
+Добавлены `voidash` и `tempmail_lol` — работают из коробки, без ящиков и паролей:
+- **voidash**: POST api.voidash.com/api/v1/inboxes {domain} -> session_key -> /api/v1/messages. Домены: voidash.bond, govno.eu.cc, musor.eu.cc, pomoi.eu.cc
+- **tempmail_lol**: POST api.tempmail.lol/v2/inbox/create -> {address, token} -> GET /v2/inbox?token=***
+**ВАЖНО**: Logicc (Clerk) блокирует ВСЕ temp-mail домены (`form_email_address_blocked` / `not_allowed_access`, проверено 15.10 на mail.tm, guerrilla, voidash.bond, tempmail.lol). Для Logicc цепочка остаётся: catchall(свой домен) -> imap_pool -> tonline. Темп-провайдеры — для ДРУГИХ сервисов, где temp-mail проходит.
+
+### Hermes Agent: провайдер `logicc`
+Gateway вешается в `~/AppData/Local/hermes/config.yaml` -> `custom_providers`:
+```yaml
+- name: logicc
+  provider: openai
+  base_url: http://127.0.0.1:18789/v1
+  api_key: logicc-local
+  discover_models: false
+  models:
+    gpt-6-luna: {ctx: 200000, cost: {input: 0, output: 0}}
+    gpt-6.1-sol: {ctx: 200000, cost: {input: 0, output: 0}}
+    # + gemini-3.8-flash, gemini-2.5-pro, claude-4.5-haiku, claude-5.5-sonnet, claude-5.5-opus, mistral-medium-3.5
+```
+После добавления: новый чат/селектор моделей -> `custom:logicc`.
