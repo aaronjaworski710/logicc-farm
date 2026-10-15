@@ -4,3 +4,7 @@ logicc_bank.jsonl
 state.json
 .env
 data/
+imap_pool.txt
+config.json
+mail_state.json
+*.bak*

@@ -15,7 +15,8 @@
       "prefix": "lg"
     },
     "tonline": {
-      "pool_file": "path/to/working_mails.txt"
+      "pool_file": "pool/tonline_1000.txt",
+      "_comment": "BUNDLED: 1000 живых t-online.de ящиков в pool/tonline_1000.txt (формат email:pass). Свой пул: укажите путь к файлу."
     },
     "imap_pool": {
       "pool_file": "imap_pool.txt"

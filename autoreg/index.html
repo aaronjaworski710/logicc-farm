@@ -224,6 +224,15 @@
         <article class="card">
           <div class="card-header flex items-center justify-between"><h3 class="card-title">Mail pool</h3><span class="badge badge-outline" id="mail-chain">...</span></div>
           <div class="card-content flex items-baseline gap-3"><span id="c-pool" class="stat-value loading">—</span><span class="text-xs text-muted-foreground">addresses available</span></div>
+          <div class="card-content" style="border-top:0;padding-top:0">
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <input id="imap-email" class="input" placeholder="your@mail.ru" style="flex:2;min-width:150px">
+              <input id="imap-pass" type="password" class="input" placeholder="пароль" style="flex:1;min-width:100px">
+              <input id="imap-host" class="input" placeholder="imap-хост (опц.)" style="flex:2;min-width:130px">
+              <button id="b-imap-add" class="btn">+ IMAP</button>
+            </div>
+            <p class="text-xs text-muted-foreground" style="margin-top:8px">Своя почта: логин/пароль, хост авто по домену (yahoo, mail.ru, gmx, web.de, icloud, t-online). Логин проверяется и ящик уходит в imap_pool.</p>
+          </div>
         </article>
         
       </div>
@@ -644,6 +653,7 @@
     $('b-import').onclick = () => act('/api/gateway/import', {}, 'act-msg', refresh, 'b-import', 'Gateway import');
     $('b-gwr').onclick = () => act('/api/gateway/restart', {}, 'act-msg', refresh, 'b-gwr', 'Gateway restart');
     $('b-opencode').onclick = () => act('/api/opencode/install', {}, 'act-msg', refresh, 'b-opencode', 'OpenCode install');
+    $('b-imap-add').onclick = () => act('/api/mail/imap_add', { email: $('imap-email').value.trim(), password: $('imap-pass').value, host: $('imap-host').value.trim() }, 'act-msg', refresh, 'b-imap-add', 'IMAP mailbox');
     $('b-occopy').onclick = async () => {
       try {
         const r = await fetch('/api/opencode/config');

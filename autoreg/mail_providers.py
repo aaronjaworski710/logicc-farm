@@ -143,6 +143,9 @@ class TOnline(Provider):
 
     def __init__(self, cfg):
         self.pool_file = cfg.get("pool_file", "")
+        # относительный путь — от папки софта (пул из репы работает out-of-the-box)
+        if self.pool_file and not os.path.isabs(self.pool_file):
+            self.pool_file = os.path.join(HERE, self.pool_file)
         self.host = cfg.get("imap_host", "secureimap.t-online.de")
         self.port = int(cfg.get("imap_port", 993))
 

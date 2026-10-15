@@ -327,6 +327,48 @@ def gw_import():
     return {"ok": fail == 0, "sent": len(accs), "imported": ok, "dup": dup, "fail": fail}
 
 
+def mail_imap_add(body):
+    """Подключить СВОЙ ящик: логин/пароль (+host опц). Проверяет IMAP-логин и дописывает в imap_pool.txt."""
+    em = (body.get("email") or "").strip().lower()
+    pw = body.get("password") or ""
+    host = (body.get("host") or "").strip()
+    port = 993
+    if "@" not in em or not pw:
+        return {"ok": False, "err": "нужны email и пароль"}
+    try:
+        import mail_providers as MP
+    except Exception as e:
+        return {"ok": False, "err": "mail_providers: %s" % e}
+    if not host:
+        dom = em.split("@")[-1]
+        hm = getattr(MP, "HOST_MAP", {}).get(dom)
+        if not hm:
+            return {"ok": False, "err": "не знаю IMAP-хост для %s — укажите host вручную" % dom}
+        host, port = hm[0], int(hm[1])
+    # проверка логина
+    try:
+        import imaplib
+        M = imaplib.IMAP4_SSL(host, port, timeout=20)
+        M.login(em, pw)
+        M.logout()
+    except Exception as e:
+        return {"ok": False, "err": "IMAP-логин не прошёл (%s@%s): %s" % (em, host, str(e)[:120])}
+    pf = os.path.join(HERE, "imap_pool.txt")
+    lines = []
+    if os.path.exists(pf):
+        lines = [l.rstrip("\n") for l in open(pf, encoding="utf-8")]
+    entry = "%s:%s:%s:%d" % (em, pw, host, port)
+    if any(l.split(":")[0].strip().lower() == em for l in lines if l.strip() and not l.startswith("#")):
+        return {"ok": False, "err": "%s уже в пуле" % em}
+    lines.append(entry)
+    tmp = pf + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    os.replace(tmp, pf)
+    n = sum(1 for l in lines if l.strip() and not l.startswith("#") and ":" in l)
+    return {"ok": True, "added": em, "host": host, "pool": n}
+
+
 def gw_restart():
     # убить node server.mjs на 18789
     rc, out = sh(["powershell", "-NoProfile", "-Command",
@@ -477,6 +519,8 @@ class H(BaseHTTPRequestHandler):
                 self._send(opencode_install())
             elif p == "/api/chat/test":
                 self._send(chat_test(body.get("model", "gpt-6-luna")))
+            elif p == "/api/mail/imap_add":
+                self._send(mail_imap_add(body))
             else:
                 self._send({"err": "not found"}, 404)
         except Exception as e:

@@ -239,3 +239,19 @@ Gateway вешается в `~/AppData/Local/hermes/config.yaml` -> `custom_prov
     # + gemini-3.8-flash, gemini-2.5-pro, claude-4.5-haiku, claude-5.5-sonnet, claude-5.5-opus, mistral-medium-3.5
 ```
 После добавления: новый чат/селектор моделей -> `custom:logicc`.
+
+
+## v1.6 — 1000 почт в комплекте + своя почта в 1 клик
+
+### Bundled пул: `autoreg/pool/tonline_1000.txt`
+1000 живых `t-online.de` ящиков (`email:password`), работают из коробки — `config.example.json` уже указывает на них. Класть в репо свои пулы: тот же формат.
+
+### Своя почта по логину/паролю (IMAP) — форма в дашборде
+Карточка **Mail pool** -> поля `email / пароль / imap-хост (опц.)` -> **+ IMAP**:
+- хост автоопределяется по домену (yahoo, mail.ru/inbox/list/bk, gmx, web.de, icloud/me, t-online) — HOST_MAP
+- логин ПРОВЕРЯЕТСЯ живым IMAP-подключением до добавления
+- ящик дописывается в `imap_pool.txt` (формат `email:pass:host:port`), дубли отсекаются
+- API: `POST /api/mail/imap_add {"email","password","host"}`
+
+### Относительные пути пулов
+`tonline.pool_file` и `imap_pool.pool_file` теперь резолвятся от папки софта — клон репы работает без правки конфигов.
