@@ -1,224 +1,678 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en" class="dark">
 <head>
-<meta charset="utf-8">
-<title>logicc-farm — control plane</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-:root{
-  --bg:#0c0e11; --panel:#12151a; --panel2:#161a20; --line:#232830;
-  --txt:#d6dae0; --dim:#7c8590; --acc:#8aa4c0; --ok:#5fb87a; --warn:#c9a15a; --bad:#c96a5a;
-  --mono:'Cascadia Mono','JetBrains Mono',Consolas,monospace;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--txt);font:14px/1.5 system-ui,'Segoe UI',sans-serif;padding:18px 22px}
-h1{font:600 17px/1.2 system-ui;letter-spacing:.02em;margin-bottom:2px}
-h1 span{color:var(--acc)}
-.sub{color:var(--dim);font-size:12px;margin-bottom:16px;font-family:var(--mono)}
-.tabs{display:flex;gap:18px;border-bottom:1px solid var(--line);margin-bottom:16px}
-.tabs button{background:none;border:none;color:var(--dim);font:13px system-ui;padding:8px 2px;cursor:pointer;border-bottom:2px solid transparent}
-.tabs button.on{color:var(--txt);border-bottom-color:var(--acc)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:12px 14px}
-.card .k{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
-.card .v{font:600 24px/1.2 var(--mono);margin-top:4px}
-.card .v.ok{color:var(--ok)}.card .v.warn{color:var(--warn)}.card .v.bad{color:var(--bad)}
-.card .x{color:var(--dim);font-size:11px;font-family:var(--mono)}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
-button.act{background:var(--panel2);border:1px solid var(--line);color:var(--txt);font:13px system-ui;padding:8px 16px;border-radius:4px;cursor:pointer}
-button.act:hover{border-color:var(--acc)}
-button.act.pri{border-color:var(--acc);color:var(--acc)}
-button.act.dan{border-color:var(--bad);color:var(--bad)}
-button.act:disabled{opacity:.4;cursor:default}
-input,select{background:var(--panel2);border:1px solid var(--line);color:var(--txt);font:13px var(--mono);padding:7px 10px;border-radius:4px}
-input[type=number]{width:70px}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{color:var(--dim);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em;text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)}
-td{padding:7px 10px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:12.5px}
-tr:hover td{background:var(--panel)}
-.pill{display:inline-block;padding:1px 9px;border-radius:10px;font-size:11px;border:1px solid}
-.pill.ok{color:var(--ok);border-color:var(--ok)}
-.pill.no{color:var(--dim);border-color:var(--line)}
-.pill.dead{color:var(--bad);border-color:var(--bad)}
-pre.log{background:#0a0c0f;border:1px solid var(--line);border-radius:4px;padding:12px;font:12px/1.65 var(--mono);color:#a8b2bd;max-height:420px;overflow:auto;white-space:pre-wrap;word-break:break-all}
-pre.log .ok{color:var(--ok)}pre.log .bad{color:var(--bad)}pre.log .warn{color:var(--warn)}
-.hide{display:none}
-.msg{font:12px var(--mono);color:var(--acc);margin-left:6px}
-.section{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:14px;margin-bottom:14px}
-.section h3{font:600 13px system-ui;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
-.chips{display:flex;gap:6px;flex-wrap:wrap}
-.chip{background:var(--panel2);border:1px solid var(--line);padding:3px 10px;border-radius:3px;font:12px var(--mono)}
-footer{color:var(--dim);font:11px var(--mono);margin-top:18px}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#09090b">
+  <title>LOGICC FARM — Control plane</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --background: #09090b;
+      --foreground: #fafafa;
+      --card: #0c0c0e;
+      --card-foreground: #fafafa;
+      --popover: #101013;
+      --border: #27272a;
+      --input: #27272a;
+      --primary: #fafafa;
+      --primary-foreground: #18181b;
+      --secondary: #27272a;
+      --secondary-foreground: #fafafa;
+      --muted: #18181b;
+      --muted-foreground: #a1a1aa;
+      --destructive: #ef4444;
+      --success: #22c55e;
+      --warning: #eab308;
+      --ring: #a1a1aa;
+      --radius: .75rem;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--foreground);
+      font-family: Inter, sans-serif;
+      font-size: 14px;
+      font-variant-numeric: tabular-nums;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button, a, input, select { -webkit-tap-highlight-color: transparent; }
+    :focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
+    ::selection { background: #3f3f46; color: white; }
+    .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+    .hide, [hidden] { display: none !important; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 2px 5px #0000001a;
+      overflow: hidden;
+    }
+    .card-header { padding: 22px 24px 0; }
+    .card-title { font-size: 14px; font-weight: 600; letter-spacing: -.02em; }
+    .card-description { margin-top: 5px; color: var(--muted-foreground); font-size: 12px; line-height: 1.6; }
+    .card-content { padding: 22px 24px 24px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      border: 1px solid transparent; border-radius: 999px;
+      padding: 3px 9px; font-size: 11px; font-weight: 500;
+      line-height: 1.5; white-space: nowrap;
+    }
+    .badge-default { background: var(--primary); color: var(--primary-foreground); }
+    .badge-secondary { background: var(--secondary); color: #d4d4d8; }
+    .badge-outline { border-color: var(--border); color: var(--muted-foreground); background: transparent; }
+    .badge-success { color: #4ade80; background: #22c55e12; border-color: #22c55e30; }
+    .badge-destructive { color: #f87171; background: #ef444412; border-color: #ef444430; }
+    .badge-failed { color: #f87171; border-color: #ef444440; background: transparent; }
+    .btn {
+      display: inline-flex; justify-content: center; align-items: center; gap: 8px;
+      min-height: 38px; padding: 8px 14px; border-radius: 7px;
+      border: 1px solid transparent; font-size: 12px; font-weight: 500;
+      white-space: nowrap; transition: background .15s, border-color .15s, opacity .15s;
+    }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-default { background: var(--primary); color: var(--primary-foreground); }
+    .btn-default:hover:not(:disabled) { background: #d4d4d8; }
+    .btn-outline { border-color: var(--border); background: transparent; color: #e4e4e7; }
+    .btn-outline:hover:not(:disabled), .btn-ghost:hover:not(:disabled) { background: var(--muted); }
+    .btn-secondary { background: var(--secondary); color: var(--foreground); }
+    .btn-secondary:hover:not(:disabled) { background: #3f3f46; }
+    .btn-destructive { background: #dc2626; color: white; }
+    .btn-destructive:hover:not(:disabled) { background: #b91c1c; }
+    .btn-ghost { background: transparent; color: var(--muted-foreground); }
+    .btn-ghost-destructive { color: #f87171; background: transparent; }
+    .btn-ghost-destructive:hover:not(:disabled) { background: #ef444412; }
+    .input {
+      width: 100%; min-height: 40px; padding: 9px 12px;
+      border: 1px solid var(--input); border-radius: 7px;
+      background: var(--background); color: var(--foreground);
+      box-shadow: 0 1px 2px #0000000d;
+    }
+    .input::placeholder { color: #71717a; }
+    .input:focus { outline: 2px solid #71717a; outline-offset: 2px; }
+    select.input { appearance: none; padding-right: 36px; cursor: pointer; }
+    .tabs { display: flex; gap: 28px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+    .tabs button {
+      position: relative; padding: 17px 1px; border: 0; background: none;
+      color: var(--muted-foreground); font-size: 13px; font-weight: 500; white-space: nowrap;
+    }
+    .tabs button:hover { color: var(--foreground); }
+    .tabs button.on { color: var(--foreground); }
+    .tabs button.on::after { content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--primary); }
+    .separator { height: 1px; width: 100%; background: var(--border); }
+    .stat-value { font-size: 36px; font-weight: 600; line-height: 1.2; letter-spacing: -.05em; min-height: 44px; }
+    .skeleton { animation: skeleton 1.8s ease-in-out infinite; background: #27272a; border-radius: 4px; }
+    .stat-value.loading { width: 85px; color: transparent; background: #27272a; border-radius: 5px; animation: skeleton 1.8s ease-in-out infinite; }
+    @keyframes skeleton { 50% { opacity: .4; } }
+    .pulse-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+    .is-live .pulse-dot { animation: live 2s ease-in-out infinite; }
+    @keyframes live { 50% { box-shadow: 0 0 0 4px #22c55e15; opacity: .6; } }
+    .progress { height: 5px; overflow: hidden; background: #27272a; border-radius: 999px; }
+    .progress-fill { height: 100%; border-radius: inherit; transition: width .4s; }
+    table { width: 100%; border-collapse: collapse; text-align: left; white-space: nowrap; }
+    th { background: #18181b80; color: var(--muted-foreground); font-size: 11px; font-weight: 500; padding: 13px 20px; }
+    td { padding: 15px 20px; font-size: 12px; border-top: 1px solid var(--border); }
+    tbody tr:hover { background: var(--muted); }
+    .terminal {
+      margin: 0; padding: 20px 24px; background: #050506;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 12px; line-height: 1.9; color: #a1a1aa;
+      white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto;
+    }
+    .terminal .ok { color: #4ade80; }
+    .terminal .bad { color: #f87171; }
+    .terminal .warn { color: #facc15; }
+    .toast {
+      width: 100%; display: flex; align-items: flex-start; gap: 12px;
+      padding: 16px; border: 1px solid var(--border); border-radius: 10px;
+      background: #111113; box-shadow: 0 12px 40px #0008;
+      animation: toast-in .2s ease-out;
+    }
+    .toast.success { border-color: #22c55e66; }
+    .toast.error { border-color: #ef444466; }
+    @keyframes toast-in { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
 </head>
-<body>
-<h1>logicc-farm <span>control plane</span></h1>
-<div class="sub" id="updated">…</div>
-
-<div class="tabs">
-  <button data-t="ov" class="on">Обзор</button>
-  <button data-t="bank">Банк</button>
-  <button data-t="gw">Gateway</button>
-  <button data-t="log">Лог</button>
-</div>
-
-<div id="t-ov">
-  <div class="grid">
-    <div class="card"><div class="k">Аккаунты</div><div class="v" id="c-total">–</div><div class="x">всего в банке</div></div>
-    <div class="card"><div class="k">Complete</div><div class="v ok" id="c-comp">–</div><div class="x">сессия получена</div></div>
-    <div class="card"><div class="k">Активированы</div><div class="v ok" id="c-act">–</div><div class="x">tenant org создан</div></div>
-    <div class="card"><div class="k">Мёртвые</div><div class="v bad" id="c-dead">–</div><div class="x">cookie протух</div></div>
-    <div class="card"><div class="k">Почта в пуле</div><div class="v" id="c-pool">–</div><div class="x">t-online свободных</div></div>
-    <div class="card"><div class="k">Gateway</div><div class="v" id="c-gw">–</div><div class="x" id="c-gwx">:18789</div></div>
-    <div class="card"><div class="k">Диск C:</div><div class="v" id="c-disk">–</div><div class="x">GB свободно</div></div>
-  </div>
-
-  <div class="section">
-    <h3>Волна регистрации</h3>
-    <div class="row">
-      <span style="color:var(--dim)">Акков:</span>
-      <input type="number" id="wave-n" value="5" min="1" max="50">
-      <button class="act pri" id="b-start">▶ Старт</button>
-      <button class="act dan" id="b-stop">■ Стоп</button>
-      <span class="pill no" id="wave-pill">остановлена</span>
-      <span class="msg" id="wave-msg"></span>
+<body class="min-h-screen">
+  <header class="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-xl">
+    <div class="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-8">
+      <div class="flex items-center gap-3">
+        <div class="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900" aria-hidden="true">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 4v16h14M10 4v11h9M15 4v6h4"/></svg>
+        </div>
+        <h1 class="text-sm font-semibold tracking-[.12em]">LOGICC FARM</h1>
+        <span class="hidden text-zinc-700 sm:inline">/</span>
+        <span class="hidden text-xs text-muted-foreground sm:inline">Control plane</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span id="live-status" class="badge badge-outline"><span class="pulse-dot"></span><span id="live-label">Connecting</span></span>
+        <span id="updated" class="hidden min-w-[155px] text-right text-[11px] text-muted-foreground sm:block" role="status">Waiting for first update</span>
+      </div>
     </div>
-  </div>
+  </header>
 
-  <div class="section">
-    <h3>2captcha</h3>
-    <div class="chips" id="captcha">…</div>
-  </div>
-
-  <div class="section">
-    <h3>Быстрые действия</h3>
-    <div class="row">
-      <button class="act" id="b-activate">Активировать 1 акк</button>
-      <button class="act" id="b-import">Импорт в gateway</button>
-      <button class="act dan" id="b-gwr">Рестарт gateway</button>
-      <span class="msg" id="act-msg"></span>
+  <main class="mx-auto max-w-7xl px-5 pb-8 sm:px-8">
+    <div class="flex items-start justify-between gap-4 pb-3 pt-9">
+      <div>
+        <div class="mb-2 text-[10px] font-medium uppercase tracking-[.18em] text-zinc-500">Workspace / Production</div>
+        <h2 class="text-2xl font-semibold tracking-tight">Control center</h2>
+        <p class="mt-2 text-xs leading-relaxed text-muted-foreground">Monitor your account bank, gateway, and registration activity.</p>
+      </div>
+      <span class="badge badge-outline mt-5 hidden sm:inline-flex"><span class="h-1 w-1 rounded-full bg-zinc-500"></span> Local instance</span>
     </div>
-  </div>
-</div>
 
-<div id="t-bank" class="hide">
-  <table>
-    <thead><tr><th>#</th><th>email</th><th>статус</th><th>активация</th><th>org_id</th><th>session</th></tr></thead>
-    <tbody id="bank-body"></tbody>
-  </table>
-</div>
+    <nav class="tabs mb-7" role="tablist" aria-label="Dashboard sections">
+      <button id="tab-ov" data-t="ov" class="on" role="tab" aria-selected="true" aria-controls="t-ov">Overview</button>
+      <button id="tab-bank" data-t="bank" role="tab" aria-selected="false" aria-controls="t-bank" tabindex="-1">Account bank</button>
+      <button id="tab-wave" data-t="wave" role="tab" aria-selected="false" aria-controls="t-wave" tabindex="-1">Wave</button>
+      <button id="tab-gw" data-t="gw" role="tab" aria-selected="false" aria-controls="t-gw" tabindex="-1">Gateway</button>
+      <button id="tab-log" data-t="log" role="tab" aria-selected="false" aria-controls="t-log" tabindex="-1">Activity log</button>
+    </nav>
 
-<div id="t-gw" class="hide">
-  <div class="section">
-    <h3>Модели gateway</h3>
-    <div class="chips" id="models">…</div>
-  </div>
-  <div class="section">
-    <h3>Тест chat completion</h3>
-    <div class="row">
-      <select id="chat-model"></select>
-      <button class="act pri" id="b-chat">Тест</button>
-      <span class="msg" id="chat-msg"></span>
-    </div>
-    <pre class="log" id="chat-out" style="max-height:120px">ответ появится здесь</pre>
-  </div>
-</div>
+    <section id="t-ov" role="tabpanel" aria-labelledby="tab-ov" class="space-y-5">
+      <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <article class="card">
+          <div class="card-header flex items-center justify-between"><h3 class="text-xs text-muted-foreground">Total accounts</h3><span class="h-1.5 w-1.5 rounded-full bg-zinc-500"></span></div>
+          <div class="card-content"><div id="c-total" class="stat-value loading">—</div><p class="mt-3 text-[11px] text-zinc-500">All accounts in bank</p></div>
+        </article>
+        <article class="card">
+          <div class="card-header flex items-center justify-between"><h3 class="text-xs text-muted-foreground">Complete</h3><span class="h-1.5 w-1.5 rounded-full bg-zinc-300"></span></div>
+          <div class="card-content"><div id="c-comp" class="stat-value loading">—</div><p class="mt-3 text-[11px] text-zinc-500">Session obtained</p></div>
+        </article>
+        <article class="card">
+          <div class="card-header flex items-center justify-between"><h3 class="text-xs text-muted-foreground">Activated</h3><span class="h-1.5 w-1.5 rounded-full bg-success"></span></div>
+          <div class="card-content"><div id="c-act" class="stat-value loading text-success">—</div><p class="mt-3 text-[11px] text-zinc-500">Tenant organization created</p></div>
+        </article>
+        <article class="card">
+          <div class="card-header flex items-center justify-between"><h3 class="text-xs text-muted-foreground">Dead accounts</h3><span class="h-1.5 w-1.5 rounded-full bg-destructive"></span></div>
+          <div class="card-content"><div id="c-dead" class="stat-value loading text-destructive">—</div><p class="mt-3 text-[11px] text-zinc-500">Expired account cookies</p></div>
+        </article>
+      </div>
 
-<div id="t-log" class="hide">
-  <pre class="log" id="logbox">…</pre>
-</div>
+      <div class="grid gap-5 lg:grid-cols-5">
+        <article class="card lg:col-span-3">
+          <div class="card-header flex items-start justify-between gap-4">
+            <div><h3 class="card-title">Gateway</h3><p class="card-description">Model routing and availability</p></div>
+            <span class="badge badge-outline mono">:18789</span>
+          </div>
+          <div class="card-content">
+            <div class="mb-5 flex items-center gap-3">
+              <div id="c-gw" class="text-xl font-semibold tracking-tight">Connecting</div>
+              <span id="c-gwx" class="text-xs text-muted-foreground">Checking models…</span>
+            </div>
+            <div class="separator mb-4"></div>
+            <div id="overview-models" class="flex min-h-7 flex-wrap gap-2">
+              <span class="skeleton h-6 w-28"></span><span class="skeleton h-6 w-32"></span><span class="skeleton h-6 w-24"></span>
+            </div>
+          </div>
+        </article>
 
-<footer>logicc-farm · порт 8560 · авто-обновление 5с · <a href="https://github.com/aaronjaworski710/logicc-farm" style="color:var(--acc)">github</a></footer>
+        <article class="card lg:col-span-2">
+          <div class="card-header flex items-start justify-between gap-3">
+            <div><h3 class="card-title">Captcha credits</h3><p class="card-description">Available provider balances</p></div>
+            <span class="badge badge-outline">2captcha</span>
+          </div>
+          <div class="card-content">
+            <div id="captcha" class="min-h-[82px] space-y-5"><div class="skeleton h-4 w-full"></div><div class="skeleton h-4 w-3/4"></div></div>
+            <p class="mt-4 text-[10px] text-zinc-600">Balance bars use a $5 reference scale.</p>
+          </div>
+        </article>
+      </div>
 
-<script>
-const $=id=>document.getElementById(id);
-let S=null;
+      <div class="grid gap-5 sm:grid-cols-2">
+        <article class="card">
+          <div class="card-header flex items-center justify-between"><h3 class="card-title">Mail pool</h3><span class="badge badge-outline">t-online</span></div>
+          <div class="card-content flex items-baseline gap-3"><span id="c-pool" class="stat-value loading">—</span><span class="text-xs text-muted-foreground">addresses available</span></div>
+        </article>
+        <article class="card">
+          <div class="card-header flex items-center justify-between"><h3 class="card-title">Storage</h3><span class="badge badge-outline mono">C:</span></div>
+          <div class="card-content flex items-baseline gap-3"><span id="c-disk" class="stat-value loading">—</span><span class="text-xs text-muted-foreground">GB free disk space</span></div>
+        </article>
+      </div>
 
-function tab(name){
-  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===name));
-  ['ov','bank','gw','log'].forEach(t=>$('t-'+t).classList.toggle('hide',t!==name));
-}
-document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>tab(b.dataset.t));
+      <article class="card">
+        <div class="card-header"><h3 class="card-title">Quick actions</h3><p class="card-description">Manage the next account or synchronize your gateway.</p></div>
+        <div class="card-content">
+          <div class="flex flex-wrap gap-3">
+            <button id="b-activate" class="btn btn-outline">Activate next <span aria-hidden="true">→</span></button>
+            <button id="b-import" class="btn btn-outline">Import to gateway</button>
+            <button id="b-gwr" class="btn btn-ghost-destructive sm:ml-auto">Restart gateway</button>
+          </div>
+          <p id="act-msg" class="mono mt-3 hidden break-words text-[11px] text-muted-foreground" role="status"></p>
+        </div>
+      </article>
+    </section>
 
-function pill(ok,text){return `<span class="pill ${ok?'ok':'no'}">${text}</span>`}
+    <section id="t-bank" class="hide" role="tabpanel" aria-labelledby="tab-bank">
+      <article class="card">
+        <div class="card-header flex flex-wrap items-start justify-between gap-3 pb-5">
+          <div><h3 class="card-title">Account bank <span id="bank-count" class="badge badge-secondary ml-2">—</span></h3><p class="card-description">Newest accounts first. Refreshes every 5 seconds while visible.</p></div>
+          <button id="b-bank-refresh" class="btn btn-outline">Refresh</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table>
+            <thead><tr><th scope="col">#</th><th scope="col">Email</th><th scope="col">Status</th><th scope="col">Activation</th><th scope="col">Organization</th><th scope="col">Session</th></tr></thead>
+            <tbody id="bank-body"><tr><td colspan="7"><div class="skeleton h-5 w-full"></div></td></tr><tr><td colspan="7"><div class="skeleton h-5 w-3/4"></div></td></tr><tr><td colspan="7"><div class="skeleton h-5 w-5/6"></div></td></tr></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
 
-async function refresh(){
-  try{
-    S=await (await fetch('/api/status')).json();
-  }catch(e){ $('updated').textContent='нет связи с dashboard'; return; }
-  $('updated').textContent='обновлено '+new Date(S.ts*1000).toLocaleTimeString('ru-RU');
-  $('c-total').textContent=S.bank.total;
-  $('c-comp').textContent=S.bank.complete;
-  $('c-act').textContent=S.bank.activated;
-  $('c-dead').textContent=S.bank.dead;
-  $('c-dead').className='v '+(S.bank.dead?'bad':'');
-  $('c-pool').textContent=S.pool_left;
-  const gw=$('c-gw');
-  gw.textContent=S.gateway.up?'UP':'DOWN';
-  gw.className='v '+(S.gateway.up?'ok':'bad');
-  $('c-gwx').textContent=S.gateway.models.length+' моделей';
-  $('c-disk').textContent=S.disk_free_gb;
-  const wp=$('wave-pill');
-  wp.textContent=S.wave.running?('идёт · pid '+S.wave.pids.join(',')):'остановлена';
-  wp.className='pill '+(S.wave.running?'ok':'no');
-  $('b-start').disabled=S.wave.running;
-  $('b-stop').disabled=!S.wave.running;
-  $('captcha').innerHTML=S.captcha.map(c=>`<span class="chip">${c.label}: <b style="color:${parseFloat(c.balance)>0.05?'var(--ok)':'var(--bad)'}">$${c.balance}</b></span>`).join('')||'—';
-  $('models').innerHTML=S.gateway.models.map(m=>`<span class="chip">${m}</span>`).join('')||'—';
-  const sel=$('chat-model'); const cur=sel.value;
-  sel.innerHTML=S.gateway.models.map(m=>`<option>${m}</option>`).join('');
-  if(cur)sel.value=cur;
-  renderLog(S.log);
-}
+    <section id="t-wave" class="hide" role="tabpanel" aria-labelledby="tab-wave">
+      <article class="card max-w-3xl">
+        <div class="card-header flex flex-wrap items-start justify-between gap-4">
+          <div><h3 class="card-title">Registration wave</h3><p class="card-description">Configure the number of accounts for the next wave.</p></div>
+          <span id="wave-pill" class="badge badge-outline">Checking status</span>
+        </div>
+        <div class="card-content">
+          <label for="wave-n" class="mb-2 block text-xs font-medium">Number of accounts</label>
+          <div class="flex flex-wrap items-center gap-3">
+            <input id="wave-n" class="input mono !min-h-14 !w-40 !text-2xl" type="number" value="5" min="1" max="50" step="1" inputmode="numeric" aria-describedby="wave-help">
+            <button id="b-start" class="btn btn-default" disabled><span aria-hidden="true">▷</span> Start wave</button>
+            <button id="b-stop" class="btn btn-destructive" disabled><span aria-hidden="true">□</span> Stop</button>
+          </div>
+          <p id="wave-help" class="mt-3 text-xs text-muted-foreground">Choose between 1 and 50 accounts. Only one wave can run at a time.</p>
+          <div class="separator my-6"></div>
+          <div class="flex items-start gap-3 text-xs leading-relaxed text-muted-foreground"><span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-500"></span><span>Wave status updates automatically. Follow registration output in the Activity log tab.</span></div>
+          <p id="wave-msg" class="mono mt-4 hidden break-words text-[11px] text-muted-foreground" role="status"></p>
+        </div>
+      </article>
+    </section>
 
-function renderLog(lines){
-  $('logbox').innerHTML=lines.map(l=>{
-    let c='';
-    if(/\b(OK|activated|complete)\b/.test(l))c='ok';
-    else if(/\b(FAIL|ERROR|Traceback)\b/.test(l))c='bad';
-    else if(/no_code|429|timeout/i.test(l))c='warn';
-    return `<span class="${c}">${l.replace(/</g,'&lt;')}</span>`;
-  }).join('\n');
-  const lb=$('logbox'); lb.scrollTop=lb.scrollHeight;
-}
+    <section id="t-gw" class="hide space-y-5" role="tabpanel" aria-labelledby="tab-gw">
+      <article class="card">
+        <div class="card-header"><h3 class="card-title">Available models</h3><p class="card-description">Models currently reported by the gateway.</p></div>
+        <div id="models" class="card-content flex min-h-20 flex-wrap gap-2"><span class="skeleton h-6 w-32"></span><span class="skeleton h-6 w-28"></span></div>
+      </article>
+      <article class="card">
+        <div class="card-header"><h3 class="card-title">Chat completion test</h3><p class="card-description">Send a prompt through the gateway to verify a model response.</p></div>
+        <div class="card-content">
+          <div class="grid items-end gap-4 md:grid-cols-[240px_1fr_auto]">
+            <div>
+              <label for="chat-model" class="mb-2 block text-xs font-medium">Model</label>
+              <div class="relative">
+                <select id="chat-model" class="input mono text-xs"><option value="">Loading models…</option></select>
+                <svg class="pointer-events-none absolute right-3 top-3.5 text-zinc-500" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+              </div>
+            </div>
+            <div><label for="chat-prompt" class="mb-2 block text-xs font-medium">Prompt</label><input id="chat-prompt" class="input" value="Say hello in one short sentence." placeholder="Enter a test prompt…" autocomplete="off"></div>
+            <button id="b-chat" class="btn btn-default min-h-10">Test model <span aria-hidden="true">→</span></button>
+          </div>
+          <div class="mb-3 mt-6 flex items-center justify-between"><span class="text-xs font-medium">Response</span><span id="chat-msg" class="mono text-[11px] text-muted-foreground" role="status">Not tested</span></div>
+          <pre id="chat-out" class="terminal min-h-36 max-h-96 rounded-lg border border-border" aria-live="polite">Your model response will appear here.</pre>
+        </div>
+      </article>
+    </section>
 
-async function refreshBank(){
-  const rows=await (await fetch('/api/bank')).json();
-  $('bank-body').innerHTML=rows.slice().reverse().map(r=>`<tr>
-    <td>${r.i}</td><td>${r.email}</td>
-    <td>${r.status}</td>
-    <td>${r.dead?'<span class="pill dead">dead</span>':(r.activated?'<span class="pill ok">активен</span>':'<span class="pill no">нет</span>')}</td>
-    <td>${r.org||'—'}</td><td>${r.sess||'—'}</td></tr>`).join('');
-}
+    <section id="t-log" class="hide" role="tabpanel" aria-labelledby="tab-log">
+      <article class="card">
+        <div class="card-header flex flex-wrap items-start justify-between gap-4 pb-5">
+          <div><h3 class="card-title">Activity log</h3><p class="card-description">Latest 200 lines. Automatically scrolls to the newest event.</p></div>
+          <div class="flex items-center gap-3"><span class="badge badge-outline mono">stdout</span><button id="b-log-refresh" class="btn btn-outline">Refresh</button></div>
+        </div>
+        <div class="separator"></div>
+        <pre id="logbox" class="terminal h-[480px] max-h-[65vh]" aria-label="Activity log">Waiting for log output…</pre>
+        <div class="flex items-center justify-between border-t border-border px-6 py-3 text-[10px] text-zinc-500"><span class="mono" id="log-count">0 lines</span><span>Auto-scroll enabled</span></div>
+      </article>
+    </section>
 
-async function act(url,body,msgEl,after){
-  $(msgEl).textContent='…';
-  try{
-    const r=await (await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})})).json();
-    $(msgEl).textContent=JSON.stringify(r).slice(0,180);
-    if(after)after(r);
-  }catch(e){$(msgEl).textContent='ошибка: '+e}
-}
+    <footer class="mt-9 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5 text-[10px] text-zinc-600">
+      <div class="flex items-center gap-3"><span class="font-medium tracking-wider text-zinc-500">LOGICC FARM</span><span class="mono">127.0.0.1:8560</span></div>
+      <div class="flex items-center gap-4"><span>Auto-refresh every 5s</span><a href="https://github.com/aaronjaworski710/logicc-farm" target="_blank" rel="noopener noreferrer" class="text-zinc-500 transition-colors hover:text-zinc-200">GitHub <span aria-hidden="true">↗</span></a></div>
+    </footer>
+  </main>
 
-$('b-start').onclick=()=>act('/api/wave/start',{n:parseInt($('wave-n').value)},'wave-msg',refresh);
-$('b-stop').onclick=()=>act('/api/wave/stop',{},'wave-msg',refresh);
-$('b-activate').onclick=()=>act('/api/activate',{},'act-msg',refresh);
-$('b-import').onclick=()=>act('/api/gateway/import',{},'act-msg',refresh);
-$('b-gwr').onclick=()=>act('/api/gateway/restart',{},'act-msg',refresh);
-$('b-chat').onclick=()=>{
-  $('chat-msg').textContent='…';
-  act('/api/chat/test',{model:$('chat-model').value},'chat-msg',r=>{
-    $('chat-out').textContent=(r.ok?'OK ':'FAIL ')+r.code+' · '+r.sec+'s\n'+(r.reply||'');
-  });
-};
+  <div id="toasts" class="pointer-events-none fixed bottom-5 right-5 z-50 flex w-[calc(100%-2.5rem)] max-w-sm flex-col gap-3" aria-live="polite" aria-relevant="additions"></div>
 
-// авто-обновление
-refresh(); refreshBank();
-setInterval(refresh,5000);
-setInterval(()=>{ if(!$('t-bank').classList.contains('hide')) refreshBank(); },5000);
-document.querySelectorAll('.tabs button').forEach(b=>{
-  b.addEventListener('click',()=>{ if(b.dataset.t==='bank') refreshBank(); });
-});
-</script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: 'var(--background)',
+            foreground: 'var(--foreground)',
+            card: { DEFAULT: 'var(--card)', foreground: 'var(--card-foreground)' },
+            primary: { DEFAULT: 'var(--primary)', foreground: 'var(--primary-foreground)' },
+            secondary: { DEFAULT: 'var(--secondary)', foreground: 'var(--secondary-foreground)' },
+            muted: { DEFAULT: 'var(--muted)', foreground: 'var(--muted-foreground)' },
+            border: 'var(--border)',
+            input: 'var(--input)',
+            destructive: 'var(--destructive)',
+            success: 'var(--success)',
+            warning: 'var(--warning)'
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace']
+          },
+          borderRadius: { xl: 'var(--radius)' }
+        }
+      }
+    };
+
+    const $ = id => document.getElementById(id);
+    const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[char]));
+    let S = null;
+    let currentTab = 'ov';
+    let statusLoading = false;
+    let bankLoading = false;
+    let logLoading = false;
+    const pending = new Set();
+
+    function toast(title, message, success = true) {
+      const node = document.createElement('div');
+      node.className = 'toast pointer-events-auto ' + (success ? 'success' : 'error');
+      node.setAttribute('role', success ? 'status' : 'alert');
+      node.innerHTML = `
+        <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${success ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}" aria-hidden="true">${success ? '✓' : '!'}</span>
+        <div class="min-w-0 flex-1"><div class="text-xs font-semibold">${esc(title)}</div><div class="mono mt-1 break-words text-[11px] leading-relaxed text-zinc-400">${esc(message)}</div></div>
+        <button class="shrink-0 text-zinc-500 hover:text-zinc-200" aria-label="Dismiss notification">×</button>`;
+      $('toasts').appendChild(node);
+      const timer = setTimeout(() => node.remove(), 3000);
+      node.querySelector('button').onclick = () => { clearTimeout(timer); node.remove(); };
+    }
+
+    async function request(url, options) {
+      const response = await fetch(url, { cache: 'no-store', ...options });
+      let data;
+      try { data = await response.json(); }
+      catch { throw new Error('Invalid JSON response (HTTP ' + response.status + ')'); }
+      if (!response.ok) {
+        throw new Error(data?.error || data?.message || ('HTTP ' + response.status));
+      }
+      return data;
+    }
+
+    function summary(data) {
+      if (typeof data === 'string') return data.slice(0, 180);
+      return (JSON.stringify(data) || 'Done').slice(0, 180);
+    }
+
+    function updateWaveButtons() {
+      $('b-start').disabled = !S || S.wave.running || pending.has('b-start') || pending.has('b-stop');
+      $('b-stop').disabled = !S || !S.wave.running || pending.has('b-start') || pending.has('b-stop');
+    }
+
+    function tab(name) {
+      currentTab = name;
+      document.querySelectorAll('.tabs button').forEach(button => {
+        const selected = button.dataset.t === name;
+        button.classList.toggle('on', selected);
+        button.setAttribute('aria-selected', String(selected));
+        button.tabIndex = selected ? 0 : -1;
+      });
+      ['ov', 'bank', 'wave', 'gw', 'log'].forEach(key => $('t-' + key).classList.toggle('hide', key !== name));
+      if (name === 'bank') refreshBank();
+      if (name === 'log') {
+        refreshLog();
+        requestAnimationFrame(() => { $('logbox').scrollTop = $('logbox').scrollHeight; });
+      }
+    }
+
+    const tabs = [...document.querySelectorAll('.tabs button')];
+    tabs.forEach((button, index) => {
+      button.onclick = () => tab(button.dataset.t);
+      button.onkeydown = event => {
+        let next;
+        if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
+        if (event.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length;
+        if (event.key === 'Home') next = 0;
+        if (event.key === 'End') next = tabs.length - 1;
+        if (next !== undefined) {
+          event.preventDefault();
+          tabs[next].focus();
+          tab(tabs[next].dataset.t);
+        }
+      };
+    });
+
+    function renderModels(models) {
+      const markup = models.map(model => `<span class="badge badge-outline mono !rounded-md !px-2.5 !py-1">${esc(model)}</span>`).join('')
+        || '<span class="text-xs text-zinc-500">No models available</span>';
+      ['models', 'overview-models'].forEach(id => {
+        if ($(id).innerHTML !== markup) $(id).innerHTML = markup;
+      });
+      const select = $('chat-model');
+      const current = select.value;
+      const previous = [...select.options].map(option => option.value);
+      if (JSON.stringify(previous) !== JSON.stringify(models.length ? models : [''])) {
+        select.replaceChildren();
+        if (!models.length) select.add(new Option('No models available', ''));
+        else models.forEach(model => select.add(new Option(model, model)));
+        if (models.includes(current)) select.value = current;
+      }
+      select.disabled = models.length === 0;
+    }
+
+    function renderCaptcha(balances) {
+      $('captcha').innerHTML = balances.map(item => {
+        const balance = parseFloat(item.balance);
+        const valid = Number.isFinite(balance);
+        const healthy = valid && balance > .05;
+        const percentage = valid ? Math.min(100, Math.max(0, balance / 5 * 100)) : 0;
+        return `<div>
+          <div class="mb-2.5 flex items-center justify-between gap-3 text-xs">
+            <span class="truncate text-zinc-400">${esc(item.label)}</span>
+            <span class="mono ${healthy ? 'text-green-400' : 'text-red-400'}">$${esc(item.balance)}</span>
+          </div>
+          <div class="progress" role="progressbar" aria-label="${esc(item.label)} balance relative to $5" aria-valuemin="0" aria-valuemax="5" aria-valuenow="${valid ? Math.min(5, Math.max(0, balance)) : 0}" aria-valuetext="${esc(item.balance)} dollars">
+            <div class="progress-fill" style="width:${percentage}%;background:${healthy ? 'var(--success)' : 'var(--destructive)'}"></div>
+          </div>
+        </div>`;
+      }).join('') || '<p class="text-xs text-zinc-500">No captcha balances reported.</p>';
+    }
+
+    async function refresh() {
+      if (statusLoading) return;
+      statusLoading = true;
+      try {
+        const data = await request('/api/status');
+        S = data;
+        const time = Number.isFinite(Number(S.ts)) ? new Date(Number(S.ts) * 1000) : new Date();
+        $('updated').textContent = 'Updated ' + time.toLocaleTimeString([], { hour12: false });
+        $('updated').title = time.toLocaleString();
+        const values = {
+          'c-total': S.bank.total, 'c-comp': S.bank.complete,
+          'c-act': S.bank.activated, 'c-dead': S.bank.dead,
+          'c-pool': S.pool_left, 'c-disk': S.disk_free_gb
+        };
+        Object.entries(values).forEach(([id, value]) => {
+          $(id).textContent = value ?? '—';
+          $(id).classList.remove('loading');
+        });
+        $('c-dead').classList.toggle('text-destructive', Number(S.bank.dead) > 0);
+        $('c-gw').textContent = S.gateway.up ? 'Operational' : 'Offline';
+        $('c-gw').className = 'text-xl font-semibold tracking-tight ' + (S.gateway.up ? 'text-success' : 'text-destructive');
+        $('c-gwx').textContent = S.gateway.models.length + ' models available';
+        $('live-status').className = 'badge ' + (S.gateway.up ? 'badge-success is-live' : 'badge-destructive');
+        $('live-label').textContent = S.gateway.up ? 'Gateway live' : 'Gateway down';
+
+        const pids = Array.isArray(S.wave.pids) ? S.wave.pids.join(', ') : S.wave.pid;
+        $('wave-pill').textContent = S.wave.running ? 'Running' + (pids != null && pids !== '' ? ' · PID ' + pids : '') : 'Stopped';
+        $('wave-pill').className = 'badge ' + (S.wave.running ? 'badge-success' : 'badge-outline');
+        updateWaveButtons();
+        renderCaptcha(S.captcha || []);
+        renderModels(S.gateway.models || []);
+        if (Array.isArray(S.log) && currentTab !== 'log') renderLog(S.log);
+      } catch (error) {
+        $('updated').textContent = 'Dashboard connection lost';
+        $('updated').title = error.message;
+        $('live-status').className = 'badge badge-destructive';
+        $('live-label').textContent = 'Disconnected';
+      } finally {
+        statusLoading = false;
+      }
+    }
+
+    function statusBadge(status) {
+      const value = String(status ?? 'UNKNOWN');
+      const variants = {
+        ACTIVATED: 'badge-success',
+        COMPLETE: 'badge-secondary',
+        DEAD: 'badge-destructive',
+        FAILED: 'badge-failed'
+      };
+      return `<span class="badge ${variants[value.toUpperCase()] || 'badge-outline'}">${esc(value)}</span>`;
+    }
+
+    async function refreshBank(manual = false) {
+      if (bankLoading) return;
+      bankLoading = true;
+      $('b-bank-refresh').disabled = true;
+      $('bank-body').setAttribute('aria-busy', 'true');
+      try {
+        const rows = await request('/api/bank');
+        if (!Array.isArray(rows)) throw new Error('Invalid account bank response');
+        $('bank-count').textContent = rows.length;
+        $('bank-body').innerHTML = rows.slice().reverse().map((row, index) => `<tr>
+          <td class="mono text-zinc-500">${esc(row.i ?? rows.length - index)}</td>
+          <td class="mono text-zinc-300">${esc(row.email)}</td>
+          <td>${statusBadge(row.status)}</td>
+          <td>${row.dead ? '<span class="badge badge-destructive">Dead</span>' : row.activated ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-outline">Not activated</span>'}</td>
+          <td class="mono text-zinc-500">${esc(row.org || '—')}</td>
+          <td class="mono max-w-[220px] truncate text-zinc-500" title="${esc(row.sess || '')}">${esc(row.sess || '—')}</td>
+          
+        </tr>`).join('') || '<tr><td colspan="7" class="py-12 text-center text-zinc-500">No accounts in the bank yet.</td></tr>';
+        if (manual) toast('Account bank refreshed', rows.length + ' accounts loaded.');
+      } catch (error) {
+        if ($('bank-count').textContent === '—') {
+          $('bank-body').innerHTML = '<tr><td colspan="7" class="py-10 text-center text-red-400">Unable to load account bank. Try Refresh.</td></tr>';
+        }
+        if (manual) toast('Refresh failed', error.message, false);
+      } finally {
+        bankLoading = false;
+        $('b-bank-refresh').disabled = false;
+        $('bank-body').setAttribute('aria-busy', 'false');
+      }
+    }
+
+    function renderLog(lines) {
+      if (!Array.isArray(lines)) return;
+      const markup = lines.map(line => {
+        const text = String(line);
+        let color = '';
+        if (/\b(FAIL|FAILED|ERROR|Traceback)\b/i.test(text)) color = 'bad';
+        else if (/no_code|429|timeout/i.test(text)) color = 'warn';
+        else if (/\b(OK|ACTIVATED|COMPLETE)\b/i.test(text)) color = 'ok';
+        return `<span class="${color}">${esc(text)}</span>`;
+      }).join('\n') || '<span class="text-zinc-600">No log output yet.</span>';
+      if ($('logbox').innerHTML !== markup) $('logbox').innerHTML = markup;
+      $('log-count').textContent = lines.length + ' lines';
+      $('logbox').scrollTop = $('logbox').scrollHeight;
+    }
+
+    async function refreshLog(manual = false) {
+      if (logLoading) return;
+      logLoading = true;
+      $('b-log-refresh').disabled = true;
+      try {
+        const result = await request('/api/log?n=200');
+        if (!Array.isArray(result.lines)) throw new Error('Invalid log response');
+        renderLog(result.lines);
+        if (manual) toast('Activity log refreshed', result.lines.length + ' lines loaded.');
+      } catch (error) {
+        if (manual) toast('Log refresh failed', error.message, false);
+      } finally {
+        logLoading = false;
+        $('b-log-refresh').disabled = false;
+      }
+    }
+
+    async function act(url, body, msgEl, after, buttonId, title) {
+      if (pending.has(buttonId)) return;
+      pending.add(buttonId);
+      const button = $(buttonId);
+      const label = button.innerHTML;
+      button.disabled = true;
+      button.textContent = 'Working…';
+      if (msgEl) {
+        $(msgEl).classList.remove('hidden');
+        $(msgEl).textContent = 'Working…';
+      }
+      updateWaveButtons();
+      try {
+        const result = await request(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body || {})
+        });
+        const success = result?.ok !== false && result?.success !== false && !result?.error;
+        if (msgEl) $(msgEl).textContent = summary(result);
+        toast(title + (success ? ' completed' : ' failed'), summary(result), success);
+        if (after) await after(result);
+      } catch (error) {
+        if (msgEl) $(msgEl).textContent = 'Error: ' + error.message;
+        toast(title + ' failed', error.message, false);
+      } finally {
+        pending.delete(buttonId);
+        button.innerHTML = label;
+        button.disabled = false;
+        updateWaveButtons();
+      }
+    }
+
+    $('b-start').onclick = () => {
+      const input = $('wave-n');
+      const n = Number(input.value);
+      if (!input.checkValidity() || !Number.isInteger(n) || n < 1 || n > 50) {
+        input.reportValidity();
+        toast('Invalid wave size', 'Enter a whole number between 1 and 50.', false);
+        return;
+      }
+      act('/api/wave/start', { n }, 'wave-msg', refresh, 'b-start', 'Start wave');
+    };
+    $('b-stop').onclick = () => act('/api/wave/stop', {}, 'wave-msg', refresh, 'b-stop', 'Stop wave');
+    $('b-activate').onclick = () => act('/api/activate', {}, 'act-msg', refresh, 'b-activate', 'Activate next');
+    $('b-import').onclick = () => act('/api/gateway/import', {}, 'act-msg', refresh, 'b-import', 'Gateway import');
+    $('b-gwr').onclick = () => act('/api/gateway/restart', {}, 'act-msg', refresh, 'b-gwr', 'Gateway restart');
+
+    $('b-chat').onclick = () => {
+      const model = $('chat-model').value;
+      const prompt = $('chat-prompt').value;
+      if (!model || !prompt.trim()) {
+        toast('Cannot run test', !model ? 'Select an available model.' : 'Enter a prompt.', false);
+        return;
+      }
+      const started = performance.now();
+      $('chat-out').setAttribute('aria-busy', 'true');
+      act('/api/chat/test', { model, prompt }, 'chat-msg', result => {
+        const elapsed = result.sec ?? ((performance.now() - started) / 1000).toFixed(2);
+        $('chat-msg').textContent = (result.ok ? 'OK' : 'FAIL') + ' · ' + elapsed + 's';
+        $('chat-out').textContent = (result.ok ? 'OK ' : 'FAIL ') + (result.code ?? '—') + ' · ' + elapsed + 's\n\n' + (result.reply || '');
+      }, 'b-chat', 'Chat test').finally(() => {
+        $('chat-out').setAttribute('aria-busy', 'false');
+      });
+    };
+    $('chat-prompt').onkeydown = event => {
+      if (event.key === 'Enter' && !$('b-chat').disabled) {
+        event.preventDefault();
+        $('b-chat').click();
+      }
+    };
+    $('b-bank-refresh').onclick = () => refreshBank(true);
+    $('b-log-refresh').onclick = () => refreshLog(true);
+
+    refresh();
+    refreshBank();
+    refreshLog();
+    setInterval(() => {
+      refresh();
+      if (currentTab === 'bank') refreshBank();
+      if (currentTab === 'log') refreshLog();
+    }, 5000);
+  </script>
 </body>
 </html>
