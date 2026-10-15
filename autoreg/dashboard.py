@@ -105,6 +105,76 @@ def captcha_balances():
     return out
 
 
+def pc_stats():
+    """CPU/RAM через ctypes (Windows) с фолбэком на /proc (Linux). stdlib-only."""
+    out = {"cpu_pct": None, "ram_used_gb": None, "ram_total_gb": None}
+    try:
+        import ctypes
+
+        class FILETIME(ctypes.Structure):
+            _fields_ = [("lo", ctypes.c_ulong), ("hi", ctypes.c_ulong)]
+
+        def ft(v):
+            return (v.hi << 32) | v.lo
+
+        def sample():
+            idle, kern, user = FILETIME(), FILETIME(), FILETIME()
+            ctypes.windll.kernel32.GetSystemTimes(
+                ctypes.byref(idle), ctypes.byref(kern), ctypes.byref(user))
+            return ft(idle), ft(kern), ft(user)
+
+        i1, k1, u1 = sample()
+        time.sleep(0.4)
+        i2, k2, u2 = sample()
+        busy = (k2 - k1) + (u2 - u1) - (i2 - i1)
+        total = (k2 - k1) + (u2 - u1)
+        if total > 0:
+            out["cpu_pct"] = round(100.0 * busy / total, 1)
+
+        class MEMORYSTATUSEX(ctypes.Structure):
+            _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong),
+                        ("ullTotalPhys", ctypes.c_ulonglong), ("ullAvailPhys", ctypes.c_ulonglong),
+                        ("ullTotalPageFile", ctypes.c_ulonglong), ("ullAvailPageFile", ctypes.c_ulonglong),
+                        ("ullTotalVirtual", ctypes.c_ulonglong), ("ullAvailVirtual", ctypes.c_ulonglong),
+                        ("ullAvailExtendedVirtual", ctypes.c_ulonglong)]
+
+        ms = MEMORYSTATUSEX()
+        ms.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+        ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(ms))
+        out["ram_total_gb"] = round(ms.ullTotalPhys / 2**30, 1)
+        out["ram_used_gb"] = round((ms.ullTotalPhys - ms.ullAvailPhys) / 2**30, 1)
+    except Exception:
+        try:  # Linux fallback
+            with open("/proc/meminfo") as f:
+                mi = dict((l.split(":")[0], int(l.split()[1])) for l in f if ":" in l)
+            out["ram_total_gb"] = round(mi.get("MemTotal", 0) / 2**20, 1)
+            out["ram_used_gb"] = round((mi.get("MemTotal", 0) - mi.get("MemAvailable", 0)) / 2**20, 1)
+            out["cpu_pct"] = round(os.getloadavg()[0] * 100.0 / max(1, os.cpu_count()), 1)
+        except Exception:
+            pass
+    return out
+
+
+def services_ping():
+    """Стек-сервисы: sidecar (free captcha), gateway, dashboard."""
+    sv = {"sidecar": False, "gateway": False, "dashboard": True}
+    try:
+        side = os.environ.get("LG_SIDE", "http://127.0.0.1:8877")
+        req = urllib.request.Request(side + "/health")
+        with urllib.request.urlopen(req, timeout=3) as r:
+            sv["sidecar"] = r.status < 500
+    except urllib.error.HTTPError:
+        sv["sidecar"] = True  # живой, но требует auth
+    except Exception:
+        pass
+    try:
+        with urllib.request.urlopen(GW + "/health", timeout=3) as r:
+            sv["gateway"] = r.status == 200
+    except Exception:
+        pass
+    return sv
+
+
 def status_all():
     with _lock:
         rows = load_bank()
@@ -153,6 +223,8 @@ def status_all():
         "gateway": {"up": gw_code == 200, "code": gw_code, "models": gw_models},
         "pool_left": pool_left,
         "disk_free_gb": round(disk.free / 2**30, 1),
+        "pc": pc_stats(),
+        "services": services_ping(),
         "captcha": captcha_balances(),
         "log": tail,
     }

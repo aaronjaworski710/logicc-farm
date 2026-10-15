@@ -106,3 +106,39 @@ cd gateway && npm install && node server.mjs
 
 ---
 [AlStack](https://t.me/AlStack) — больше разборов и тулкитов
+
+## v1.2 — Multi-mail, MCP, one-click
+
+### Почтовые вариации (mail_providers.py + config.json)
+Цепочка провайдеров в `config.json → mail.providers` (первый исчерпан → следующий):
+- **catchall** — свой домен с catch-all forwarding (ForwardEmail/Cloudflare) → код читается из Gmail IMAP. Безлимит адресов `lg<rand>@yourdomain.com`. Clerk НЕ блокирует собственные домены. E2E проверено: vortexio-style домен → org активирован → auto-import 201.
+- **imap** — любой свой ящик (Gmail app-password / Outlook / свой сервер), plus/dot-алиасы.
+- **tonline** — пул `email:pass` файл, IMAP secureimap.t-online.de.
+- Temp-mail (voidash и т.п.) — **заблокирован Clerk** ("temporary email services are not allowed"), не использовать.
+
+Секреты — только env (`GMAIL_APP_PW`) или локальный config.json (в репо только config.example.json).
+
+### Авто-активация + мгновенный endpoint
+Каждый новый акк в волне: регистрация → free captcha → код → **tenant активация** → **auto-import в gateway (201)** — endpoint `http://127.0.0.1:18789/v1` доступен сразу, без ручных шагов. Отключение: `config.json → gateway.auto_import=false`.
+
+### MCP-сервер (тулзы видит любой агент)
+`mcp_server.py` — stdio JSON-RPC (stdlib-only), 8 тулзов: `logicc_status, pc_stats, list_services, bank_list, wave_start, wave_stop, gateway_import, chat`.
+Регистрация в Hermes `config.yaml`:
+```yaml
+mcp_servers:
+  logicc:
+    command: python
+    args: ["<path>/mcp_server.py"]
+```
+Или Claude Desktop `claude_desktop_config.json` — тот же формат.
+
+### One-click запуск
+```
+pip install -r requirements.txt   # curl_cffi
+python start_all.py               # dashboard :8560 + gateway :18789 + sidecar ping
+python start_all.py --stop        # остановить всё
+```
+Пути настраиваются env: `LG_HOME, LG_GW_DIR, LG_DASH_PORT, LG_POOL, GMAIL_APP_PW`.
+
+### ПК-метрики в дашборде
+`/api/status → pc {cpu_pct, ram_used_gb, ram_total_gb}` (ctypes GetSystemTimes/GlobalMemoryStatusEx, Linux fallback /proc) + `services {sidecar, gateway, dashboard, wave}`. В UI — карточки System (CPU/RAM/Disk бары) и Services (живые UP/DOWN точки).

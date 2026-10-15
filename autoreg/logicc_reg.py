@@ -2,6 +2,7 @@
 import json, os, random, re, ssl, sys, time, urllib.parse, urllib.request, http.cookiejar
 import imaplib, email as emaillib
 from email.header import decode_header
+import mail_providers as MP
 
 BASE_CLERK = "https://clerk.logicc.com"
 SITEKEY = "0x4AAAAAAAWXJGBD7bONzLBd"
@@ -274,7 +275,7 @@ def vd_wait_code(sk, timeout=240):
         time.sleep(8)
     return ""
 
-def register(em, pw):
+def register(em, pw, wait_code=None):
     jar = http.cookiejar.CookieJar()
     tok = solve_turnstile()
     if not tok:
@@ -310,7 +311,7 @@ def register(em, pw):
             log("prepare ok")
         except urllib.error.HTTPError as e:
             log("prepare http", e.code, e.read().decode("utf-8", "replace")[:150])
-        code = imap_wait_code(em, pw, t0, timeout=420)
+        code = wait_code(t0, 420) if wait_code else imap_wait_code(em, pw, t0, timeout=420)
         if not code:
             return {"email": em, "err": "no_code", "su_id": su_id, "password": password}
         log("code", code)
@@ -396,10 +397,35 @@ def activate_account(rec):
     except Exception as e:
         log("activate exc", repr(e)); return ""
 
+def gw_auto_import(rec):
+    """Сразу после активации отправить акк в gateway — endpoint доступен мгновенно."""
+    try:
+        cfg = MP.load_cfg().get("gateway", {})
+        if not cfg.get("auto_import", True):
+            return
+        if not (rec.get("client_cookie") and rec.get("session_id")):
+            return
+        url = cfg.get("url", "http://127.0.0.1:18789") + "/api/accounts/import"
+        payload = json.dumps({"accounts": [{
+            "name": rec["email"].split("@")[0],
+            "clientCookie": rec["client_cookie"],
+            "sessionId": rec["session_id"],
+        }]}).encode()
+        req = urllib.request.Request(url, data=payload, headers={
+            "Content-Type": "application/json",
+            "X-Logicc-Admin": str(cfg.get("admin", "1")),
+        })
+        with urllib.request.urlopen(req, timeout=90) as r:
+            log("auto-import ok", r.status)
+    except urllib.error.HTTPError as e:
+        log("auto-import http", e.code)
+    except Exception as e:
+        log("auto-import unavailable:", repr(e)[:80])
+
 def main():
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 1
-    pool = load_pool()
-    st = load_state()
+    chain = MP.MailChain(MP.load_cfg())
+    log("mail providers:", " -> ".join(p.name for p in chain.chain))
     used = set()
     if os.path.exists(BANK):
         for line in open(BANK, encoding="utf-8"):
@@ -407,15 +433,18 @@ def main():
             except Exception: pass
     ok = fail = 0
     for i in range(n):
-        while st["idx"] < len(pool) and pool[st["idx"]][0] in used:
-            st["idx"] += 1
-        if st["idx"] >= len(pool):
-            log("pool exhausted"); break
-        em, pw = pool[st["idx"]]
-        st["idx"] += 1
-        save_state(st)
-        log(f"[{i+1}/{n}] reg {em}")
-        rec = register(em, pw)
+        prov, r = None, None
+        for _ in range(300):
+            prov, r = chain.next_address()
+            if r is None or r[0] not in used:
+                break
+        if r is None:
+            log("mail exhausted (all providers)"); break
+        em, pw, wait_code = r
+        used.add(em)
+        log(f"[{i+1}/{n}] reg {em} via {prov}")
+        rec = register(em, pw, wait_code)
+        rec["mail_provider"] = prov
         if rec.get("client_cookie") and rec.get("session_id"):
             org = activate_account(rec)
             if org:
@@ -424,6 +453,8 @@ def main():
                 log("activated", org)
         with open(BANK, "a", encoding="utf-8") as f:
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+        if rec.get("activated"):
+            gw_auto_import(rec)
         if rec.get("client_cookie") and rec.get("session_id"):
             ok += 1
             log("OK", rec["session_id"])

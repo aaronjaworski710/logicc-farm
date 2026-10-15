@@ -1,0 +1,27 @@
+{
+ "mail": {
+  "providers": [
+   "catchall",
+   "tonline"
+  ],
+  "catchall": {
+   "domains": [
+    "yourdomain.com"
+   ],
+   "gmail_user": "your-inbox@gmail.com",
+   "gmail_app_pass_env": "GMAIL_APP_PW",
+   "prefix": "lg"
+  },
+  "tonline": {
+   "pool_file": "path/to/working_mails.txt"
+  }
+ },
+ "gateway": {
+  "url": "http://127.0.0.1:18789",
+  "admin": "1",
+  "auto_import": true
+ },
+ "sidecar": {
+  "url": "http://127.0.0.1:8877"
+ }
+}
