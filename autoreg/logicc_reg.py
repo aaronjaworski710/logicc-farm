@@ -146,9 +146,35 @@ def solve_sidecar():
         log("sidecar err:", str(e)[:120])
     return ""
 
+SITEKEY = "0x4AAAAAAAWXJGBD7bONzLBd"
+SIDECAR = "http://127.0.0.1:8877"
+
+def solve_free(tries=3):
+    # sidecar real_page=false (blank-widget mode) solves this sitekey in ~18s, FREE
+    # real_page=true на logicc = clicked→timeout (не использовать)
+    for att in range(1, tries + 1):
+        try:
+            req = urllib.request.Request(SIDECAR + "/solve",
+                data=json.dumps({"type": "turnstile", "sitekey": SITEKEY,
+                                 "url": PAGE, "real_page": False, "timeout_s": 110}).encode(),
+                headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=130) as r:
+                d = json.loads(r.read().decode())
+            if d.get("solved") and d.get("token"):
+                return d["token"]
+            print("    free-solver att%d: solved=%s err=%s" % (att, d.get("solved"), str(d.get("error"))[:120]), flush=True)
+        except Exception as e:
+            print("    free-solver att%d fail: %r" % (att, e), flush=True)
+        time.sleep(5)
+    return None
+
 def solve_turnstile():
-    # sidecar cloakbrowser gives 408 on this sitekey (clicked→timeout); 2captcha solves in ~10s
-    return solve_2captcha()
+    tok = solve_free()          # FREE first: sidecar :8877 real_page=false
+    if tok:
+        print("    captcha: FREE sidecar", flush=True)
+        return tok
+    print("    captcha: fallback 2captcha", flush=True)
+    return solve_2captcha()     # платный фолбэк (~$0.002)
 
 def clerk_post(jar, path, fields):
     url = BASE_CLERK + path
