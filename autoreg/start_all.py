@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -31,8 +32,10 @@ def ping(url, timeout=3):
     try:
         with urllib.request.urlopen(url, timeout=timeout) as r:
             return r.status < 500
-    except Exception as e:
-        return getattr(e, "code", 0) is not None and getattr(e, "code", 0) < 500
+    except urllib.error.HTTPError as e:
+        return e.code < 500
+    except Exception:
+        return False
 
 
 def py():
@@ -81,6 +84,24 @@ def start_gateway():
         print("[gateway] node not installed — skip")
 
 
+def install_opencode():
+    """Софт САМ дописывает провайдера logicc в ~/.config/opencode/opencode.json."""
+    if not ping("http://127.0.0.1:18789/health"):
+        print("[opencode] gateway down — skip auto-install")
+        return
+    port = os.environ.get("LG_DASH_PORT", "8560")
+    try:
+        req = urllib.request.Request("http://127.0.0.1:%s/api/opencode/install" % port,
+                                     data=b"{}", method="POST",
+                                     headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            d = json.loads(r.read())
+        m = d.get("models")
+        print("[opencode] provider auto-installed:", d.get("ok"), "| models:", m if isinstance(m, int) else len(m or []))
+    except Exception as e:
+        print("[opencode] auto-install failed:", str(e)[:100])
+
+
 def check_sidecar():
     ok = ping("http://127.0.0.1:8877/health")
     print("[sidecar] free captcha :8877 %s" % ("UP" if ok else "DOWN (2captcha fallback only)"))
@@ -119,5 +140,6 @@ if __name__ == "__main__":
     else:
         start_dashboard()
         start_gateway()
+        install_opencode()
         check_sidecar()
         print("\nUI: http://127.0.0.1:8560 | LLM: http://127.0.0.1:18789/v1 | MCP: python mcp_server.py")

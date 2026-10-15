@@ -105,6 +105,30 @@ def captcha_balances():
     return out
 
 
+def mail_info():
+    """Почтовая цепочка: провайдеры из config + размеры пулов."""
+    try:
+        import mail_providers as MP
+        cfg = MP.load_cfg()
+        mail = cfg.get("mail", {})
+        names = mail.get("providers", ["tonline"])
+        info = {"providers": names}
+        try:
+            pool = MP.ImapPool(mail.get("imap_pool", {}))
+            info["imap_pool"] = pool.count()
+        except Exception:
+            info["imap_pool"] = 0
+        ca = mail.get("catchall", {})
+        info["catchall_domains"] = len(ca.get("domains", []))
+        im = mail.get("imap", {})
+        if im.get("user"):
+            u = im["user"]
+            info["imap_alias"] = u[:3] + "***@" + u.split("@")[-1] + " (" + im.get("alias", "plus") + ")"
+        return info
+    except Exception as e:
+        return {"err": str(e)[:80]}
+
+
 def pc_stats():
     """CPU/RAM через ctypes (Windows) с фолбэком на /proc (Linux). stdlib-only."""
     out = {"cpu_pct": None, "ram_used_gb": None, "ram_total_gb": None}
@@ -223,6 +247,7 @@ def status_all():
         "gateway": {"up": gw_code == 200, "code": gw_code, "models": gw_models},
         "pool_left": pool_left,
         "disk_free_gb": round(disk.free / 2**30, 1),
+        "mail": mail_info(),
         "pc": pc_stats(),
         "services": services_ping(),
         "captcha": captcha_balances(),
@@ -351,9 +376,20 @@ def opencode_snippet(base=None):
     }
 
 
+def _user_home():
+    """expanduser('~') ломается в detached-процессах без USERPROFILE — резолвим надёжно."""
+    h = os.environ.get("USERPROFILE") or os.environ.get("HOME") or ""
+    e = os.path.expanduser("~")
+    if e and not e.startswith("~"):
+        return e
+    if h:
+        return h
+    return "C:/Users/User" if os.name == "nt" else "/root"
+
+
 def opencode_install():
     """1-click: merge logicc provider into the user's global opencode config."""
-    home = os.path.expanduser("~")
+    home = _user_home()
     cfg_dir = os.path.join(home, ".config", "opencode")
     os.makedirs(cfg_dir, exist_ok=True)
     path = os.path.join(cfg_dir, "opencode.json")

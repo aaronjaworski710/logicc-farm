@@ -1,0 +1,15 @@
+# Пул ящиков для imap_pool провайдера. Формат: email:pass[:host[:port]]
+# 1 ящик = 1 аккаунт Logicc (без алиасов). Хост авто-определяется по домену:
+#   yahoo.com -> imap.mail.yahoo.com   mail.ru/inbox.ru/bk.ru -> imap.mail.ru
+#   gmx.de/gmx.com -> imap.gmx.net     web.de -> imap.web.de
+#   icloud.com -> imap.mail.me.com     t-online.de -> secureimap.t-online.de
+# ВАЖНО: Logicc Clerk BLOCKS: gmail.com, outlook.com, hotmail.com и все temp-mail
+# (mail.tm, guerrilla, voidash = form_email_address_blocked).
+# ALLOWED: yahoo.com, mail.ru, gmx.de, web.de, icloud.com, proton.me, yandex? (не тестирован)
+# Yahoo: включите "app password" (Account Security) — обычный пароль по IMAP не работает.
+# mail.ru: включите IMAP в настройках почты, используйте «пароль для внешних приложений».
+#
+# Примеры строк (скопировать в imap_pool.txt без #):
+# mybox123@yahoo.com:abcdefghijklmno
+# mybox456@mail.ru:MyAppPassword123
+# custom@mydomain.com:pass:imap.mydomain.com:993

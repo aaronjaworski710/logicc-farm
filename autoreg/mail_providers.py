@@ -7,7 +7,10 @@ mail_providers.py — сменные почтовые провайдеры дл�
   catchall — СВОЙ домен с catch-all forwarding (ForwardEmail/Cloudflare) → Gmail IMAP.
              Clerk НЕ блокирует собственные домены (temporary-email blocklist не срабатывает).
              Безлимит адресов: lg<rand>@domain
-  imap     — произвольный ящик (Gmail/Outlook/свой сервер) с plus- или dot-алиасами
+  imap     — произвольный ящик с plus/dot/dash-алиасами (dash = yahoo disposable:
+             один yahoo-ящик = БЕЗЛИМИТ адресов; host авто по домену)
+  imap_pool — пул ящиков из файла email:pass[:host[:port]] (mail.ru/yahoo/gmx/web.de —
+             бесплатные домены, которые Clerk ПРОПУСКАЕТ; gmail/outlook/hotmail/temp-mail — БЛОК)
   voidash  — temp-mail (ВНИМАНИЕ: Clerk логирует «temporary email services are not allowed»,
              все voidash-домены заблокированы на sign_up; провайдер оставлен для других целей)
 
@@ -40,6 +43,31 @@ def _secret(cfg_block, key):
     if envk:
         return os.environ.get(envk, "")
     return cfg_block.get(key, "")
+
+
+# авто-хосты IMAP для популярных ALLOWED-доменов (проверено Clerk-allowlist 15.10:
+# icloud/yahoo/proton/gmx.de/web.de/mail.ru = ALLOWED; gmail/outlook/hotmail = BLOCKED not_allowed;
+# temp-mail сервисы (mail.tm/guerrilla/voidash) = BLOCKED temporary)
+HOST_MAP = {
+    "yahoo.com": ("imap.mail.yahoo.com", 993),
+    "ymail.com": ("imap.mail.yahoo.com", 993),
+    "mail.ru": ("imap.mail.ru", 993),
+    "inbox.ru": ("imap.mail.ru", 993),
+    "list.ru": ("imap.mail.ru", 993),
+    "bk.ru": ("imap.mail.ru", 993),
+    "gmx.de": ("imap.gmx.net", 993),
+    "gmx.com": ("imap.gmx.net", 993),
+    "gmx.net": ("imap.gmx.net", 993),
+    "web.de": ("imap.web.de", 993),
+    "icloud.com": ("imap.mail.me.com", 993),
+    "me.com": ("imap.mail.me.com", 993),
+    "t-online.de": ("secureimap.t-online.de", 993),
+}
+
+
+def _host_for(email):
+    dom = email.split("@")[-1].lower()
+    return HOST_MAP.get(dom)
 
 
 # ───────────────────────── readers (ждут код письма) ─────────────────────────
@@ -179,7 +207,11 @@ class GenericIMAP(Provider):
         self.port = int(cfg.get("imap_port", 993))
         self.user = cfg.get("user", "")
         self.pw = _secret(cfg, "password")
-        self.mode = cfg.get("alias", "plus")  # plus | dot | none
+        self.mode = cfg.get("alias", "plus")  # plus | dot | dash | none
+        if not self.host:  # авто-определение по домену ящика
+            hm = _host_for(self.user) if self.user else None
+            if hm:
+                self.host, self.port = hm[0], hm[1]
 
     def next_address(self):
         if not (self.host and self.user and self.pw):
@@ -190,6 +222,8 @@ class GenericIMAP(Provider):
             addr = "%s+%s@%s" % (base, tag, dom)
         elif self.mode == "dot":
             addr = base + "." + tag[:6] + "@" + dom
+        elif self.mode == "dash":  # yahoo disposable: base-tag@yahoo.com
+            addr = "%s-%s@%s" % (base, tag, dom)
         else:
             addr = self.user
         h, p, u, pw = self.host, self.port, self.user, self.pw
@@ -200,7 +234,60 @@ class GenericIMAP(Provider):
         return addr, None, wait_code
 
 
-BUILDERS = {"tonline": TOnline, "catchall": CatchAll, "imap": GenericIMAP}
+class ImapPool(Provider):
+    """ПУЛ любых ящиков (файл email:pass[:host[:port]], по строке на ящик).
+    Хост авто по домену (HOST_MAP) или явный в строке. 1 ящик = 1 аккаунт Logicc.
+    Для людей: набейте пул бесплатными mail.ru/yahoo/gmx/web.de ящиками."""
+    name = "imap_pool"
+
+    def __init__(self, cfg):
+        pf = cfg.get("pool_file", "imap_pool.txt")
+        self.pool_file = pf if os.path.isabs(pf) else os.path.join(HERE, pf)
+
+    def _load(self):
+        out = []
+        if not os.path.exists(self.pool_file):
+            return out
+        with open(self.pool_file, encoding="utf-8", errors="replace") as f:
+            for ln in f:
+                ln = ln.strip()
+                if not ln or ln.startswith("#") or ":" not in ln:
+                    continue
+                parts = ln.split(":")
+                em, pw = parts[0].strip(), parts[1].strip()
+                host = parts[2].strip() if len(parts) > 2 and parts[2].strip() else None
+                port = int(parts[3]) if len(parts) > 3 and parts[3].strip() else 993
+                if not host:
+                    hm = _host_for(em)
+                    if hm:
+                        host, port = hm[0], hm[1]
+                if not host:
+                    continue
+                out.append((em, pw, host, port))
+        return out
+
+    def count(self):
+        return len(self._load())
+
+    def next_address(self):
+        rows = self._load()
+        if not rows:
+            return None
+        st = _load_state()
+        idx = st.get("imap_pool_idx", 0)
+        if idx >= len(rows):
+            return None
+        em, pw, host, port = rows[idx]
+        st["imap_pool_idx"] = idx + 1
+        _save_state(st)
+
+        def wait_code(since_ts, timeout=420):
+            return _imap_read_code(host, port, em, pw, em, since_ts, timeout)
+
+        return em, pw, wait_code
+
+
+BUILDERS = {"tonline": TOnline, "catchall": CatchAll, "imap": GenericIMAP, "imap_pool": ImapPool}
 
 
 class MailChain:

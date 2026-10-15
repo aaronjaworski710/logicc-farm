@@ -2,6 +2,8 @@
  "mail": {
   "providers": [
    "catchall",
+   "imap_pool",
+   "imap",
    "tonline"
   ],
   "catchall": {
@@ -14,6 +16,15 @@
   },
   "tonline": {
    "pool_file": "path/to/working_mails.txt"
+  },
+  "imap_pool": {
+   "pool_file": "imap_pool.txt"
+  },
+  "imap": {
+   "user": "your-inbox@yahoo.com",
+   "password_env": "YAHOO_APP_PW",
+   "alias": "dash",
+   "_comment": "dash=yahoo disposable (безлимит с 1 ящика), plus=proton/gmail-style, dot=gmail; host авто по домену. ALLOWED-домены: yahoo/mail.ru/gmx.de/web.de/icloud/proton.me. BLOCKED: gmail/outlook/hotmail/temp-mail."
   }
  },
  "gateway": {

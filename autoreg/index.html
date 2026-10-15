@@ -222,7 +222,7 @@
 
       <div class="grid gap-5">
         <article class="card">
-          <div class="card-header flex items-center justify-between"><h3 class="card-title">Mail pool</h3><span class="badge badge-outline">catchall + t-online</span></div>
+          <div class="card-header flex items-center justify-between"><h3 class="card-title">Mail pool</h3><span class="badge badge-outline" id="mail-chain">...</span></div>
           <div class="card-content flex items-baseline gap-3"><span id="c-pool" class="stat-value loading">—</span><span class="text-xs text-muted-foreground">addresses available</span></div>
         </article>
         
@@ -457,6 +457,16 @@
 
         function renderSystem(S) {
       const sv = S.services || {};
+      const mi = S.mail || {};
+      const mc = $('mail-chain');
+      if (mc) {
+        const parts = (mi.providers || []).map(p => {
+          if (p === 'imap_pool') return 'imap_pool(' + (mi.imap_pool || 0) + ')';
+          if (p === 'catchall') return 'catchall(' + (mi.catchall_domains || 0) + ' dom)';
+          return p;
+        });
+        mc.textContent = parts.length ? parts.join(' → ') : 'no mail config';
+      }
       const waveUp = !!(S.wave && S.wave.running);
       const items = [
         ['Captcha sidecar', ':8877 free turnstile', !!sv.sidecar],

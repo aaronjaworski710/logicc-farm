@@ -111,7 +111,7 @@ cd gateway && npm install && node server.mjs
 
 ### Почтовые вариации (mail_providers.py + config.json)
 Цепочка провайдеров в `config.json → mail.providers` (первый исчерпан → следующий):
-- **catchall** — свой домен с catch-all forwarding (ForwardEmail/Cloudflare) → код читается из Gmail IMAP. Безлимит адресов `lg<rand>@yourdomain.com`. Clerk НЕ блокирует собственные домены. E2E проверено: vortexio-style домен → org активирован → auto-import 201.
+- **catchall** — свой домен с catch-all forwarding (ForwardEmail/Cloudflare) → код читается из Gmail IMAP. Безлимит адресов `lg<rand>@yourdomain.com`. Clerk НЕ блокирует собственные домены. E2E проверено: свой catch-all домен → org активирован → auto-import 201.
 - **imap** — любой свой ящик (Gmail app-password / Outlook / свой сервер), plus/dot-алиасы.
 - **tonline** — пул `email:pass` файл, IMAP secureimap.t-online.de.
 - Temp-mail (voidash и т.п.) — **заблокирован Clerk** ("temporary email services are not allowed"), не использовать.
@@ -181,3 +181,37 @@ opencode run -m logicc/gpt-6-luna "hello"
 - Промпт >50KB дамвится в `data/last_prompt.txt` для отладки WAF-триггеров.
 
 Проверено E2E: `opencode run` gpt-6-luna → `OC-FARM-OK` (exit 0), claude-5.5-sonnet → арифметика OK.
+
+
+## v1.4 — Почта «для людей» + авто-установка OpenCode
+
+### Какие почтовые домены пропускает Logicc (проверено live-сканом Clerk, 15.10)
+| Статус | Домены |
+|---|---|
+| ALLOWED | yahoo.com, icloud.com, proton.me, gmx.de, web.de, mail.ru (+ inbox.ru/bk.ru/list.ru), t-online.de, свои домены |
+| BLOCKED (`not_allowed_access`) | gmail.com (включая +алиасы), outlook.com, hotmail.com |
+| BLOCKED (`form_email_address_blocked`) | все temp-mail: mail.tm, guerrillamail, voidash и т.п. |
+
+### Провайдер `imap` — БЕЗЛИМИТ с одного ящика
+- **Yahoo** (`"alias": "dash"`): disposable-адреса `base-<tag>@yahoo.com` — один бесплатный yahoo-ящик + app password = неограниченно аккаунтов. Проверено: dash-алиас ACCEPTED Clerk'ом.
+- **Proton** (`"alias": "plus"`): `base+<tag>@proton.me` — ACCEPTED (чтение кода через Proton Bridge).
+- IMAP-хост определяется автоматически по домену (HOST_MAP), можно переопределить `imap_host`.
+
+### Провайдер `imap_pool` — пул ящиков
+Файл `imap_pool.txt`, построчно `email:pass[:host[:port]]` (шаблон: `imap_pool.example.txt`).
+1 ящик = 1 аккаунт Logicc. Люди без своего домена: нарегать бесплатных mail.ru / yahoo / gmx / web.de ящиков (у всех бесплатный IMAP + app-пароли) и закинуть в пул.
+
+```json
+"mail": { "providers": ["catchall", "imap_pool", "imap", "tonline"],
+          "imap_pool": { "pool_file": "imap_pool.txt" },
+          "imap": { "user": "you@yahoo.com", "password_env": "YAHOO_APP_PW", "alias": "dash" } }
+```
+
+### OpenCode: софт САМ ставит провайдера
+- `python start_all.py` — при каждом запуске стека автоматически пишет провайдера `logicc` в `~/.config/opencode/opencode.json` (если gateway поднят).
+- Кнопка **⚡ OpenCode 1-click** в дашборде — то же самое вручную.
+- Фикс: детached-процессы без `USERPROFILE` больше не пишут конфиг в мусорную папку `~` (robust home-резолв).
+
+### Дашборд
+- Badge **Mail pool** теперь показывает живую цепочку из config: `catchall(N dom) → imap_pool(N) → tonline`.
+- `/api/status → mail`: провайдеры, размер imap_pool, число catchall-доменов, alias-ящик (маскируется).
