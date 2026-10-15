@@ -92,6 +92,8 @@ export function createAdapter({ env = process.env, dataFile = env.LOGICC_DATA_FI
     const response = await fetch(`${apiBase}/${path}`, {
       method, signal, redirect: 'error',
       headers: { Authorization: `Bearer ${token}`, Accept: stream ? 'text/event-stream' : 'application/json',
+        Origin: 'https://app.logicc.com', Referer: 'https://app.logicc.com/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36',
         ...(stream ? { 'Stream-Response-Protocol': 'ai-sdk-v6' } : {}),
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
       body: body === undefined ? undefined : JSON.stringify(body),

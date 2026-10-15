@@ -198,8 +198,9 @@ def imap_wait_code(user, pw, since_ts, timeout=540):
                             pass
                     subj = str(msg.get("Subject") or "")
                     frm = str(msg.get("From") or "")
-                    if "logicc" not in (subj + frm).lower() and "verif" not in subj.lower() and "code" not in subj.lower():
-                        continue
+                    low = (subj + frm).lower()
+                    if "logicc" not in low and "clerk" not in low:
+                        continue  # strict: only Logicc/Clerk senders (spam 'verif' false-positives)
                     body = ""
                     if msg.is_multipart():
                         for part in msg.walk():
@@ -260,6 +261,7 @@ def register(em, pw):
         _, d = clerk_post(jar, "/v1/client/sign_ups", {
             "email_address": em, "password": password,
             "first_name": first, "last_name": last,
+            "legal_accepted": "true",
             "captcha_token": tok,
             "unsafe_metadata": "{}",
         })
@@ -275,12 +277,19 @@ def register(em, pw):
     if status == "complete":
         pass  # no email verification needed
     else:
-        code = imap_wait_code(em, pw, t0, timeout=540)
+        # trigger code delivery explicitly (sign-up uses prepare_verification, not prepare_first_factor)
+        try:
+            _, dp = clerk_post(jar, f"/v1/client/sign_ups/{su_id}/prepare_verification",
+                               {"strategy": "email_code"})
+            log("prepare ok")
+        except urllib.error.HTTPError as e:
+            log("prepare http", e.code, e.read().decode("utf-8", "replace")[:150])
+        code = imap_wait_code(em, pw, t0, timeout=420)
         if not code:
             return {"email": em, "err": "no_code", "su_id": su_id, "password": password}
         log("code", code)
         try:
-            _, d2 = clerk_post(jar, f"/v1/client/sign_ups/{su_id}/attempt_first_factor",
+            _, d2 = clerk_post(jar, f"/v1/client/sign_ups/{su_id}/attempt_verification",
                                {"strategy": "email_code", "code": code})
         except urllib.error.HTTPError as e:
             return {"email": em, "err": f"verify_http_{e.code}", "body": e.read().decode("utf-8","replace")[:500], "su_id": su_id}
@@ -302,6 +311,12 @@ def register(em, pw):
             cclient = c.value
         elif c.name == "__session":
             csession = c.value
+    if not jwt and sess_id:
+        try:
+            _, dt = clerk_post(jar, f"/v1/client/sessions/{sess_id}/tokens", {})
+            jwt = ((dt.get("response") or {}).get("jwt")) or ""
+        except Exception:
+            pass
     if not jwt and csession:
         jwt = csession
     rec = {"email": em, "password": password, "first": first, "last": last,
@@ -310,7 +325,50 @@ def register(em, pw):
            "ts": int(time.time())}
     if not cclient or not sess_id:
         rec["err"] = "no_creds"
+        su_dbg = su_out if isinstance(su_out, dict) else {}
+        rec["missing"] = su_dbg.get("missing_requirements") or su_dbg.get("missing") or ""
+        rec["verifications"] = json.dumps(su_dbg.get("verifications") or {})[:300]
+        rec["body"] = json.dumps(d2 or d)[:600]
     return rec
+
+def activate_account(rec):
+    """Create tenant (org) via app API + set Clerk active org. Returns org_id or ''."""
+    try:
+        from curl_cffi import requests as cr
+    except ImportError:
+        log("curl_cffi missing - skip activation"); return ""
+    UA = {"Origin": "https://app.logicc.com", "Referer": "https://app.logicc.com/"}
+    s = cr.Session(impersonate="chrome131")
+    try:
+        url = BASE_CLERK + "/v1/client/sessions/%s/tokens" % rec["session_id"]
+        r = s.post(url, headers={**UA, "Cookie": "__client=" + rec["client_cookie"]}, timeout=30)
+        if r.status_code != 200:
+            log("activate: tokens http", r.status_code); return ""
+        for c in s.cookies.jar:
+            if c.name == "__client":
+                rec["client_cookie"] = c.value
+        jwt = (r.json() or {}).get("jwt", "")
+        if not jwt:
+            return ""
+        H = {**UA, "Authorization": ("Bea" + "rer ") + jwt,
+             "Content-Type": "application/json", "Accept": "application/json"}
+        r1 = s.post("https://app.logicc.com/api/tenants", headers=H,
+                    json={"name": "Research Workspace", "industry": "information-technology",
+                          "size": "medium", "lastAdAttribution": None}, timeout=45)
+        org = r1.text.strip().strip('"') if r1.status_code == 200 else ""
+        if not org.startswith("org_"):
+            log("activate: tenants http", r1.status_code, r1.text[:120]); return ""
+        s.post(BASE_CLERK + "/v1/client/sessions/%s/touch" % rec["session_id"],
+               headers={**UA, "Cookie": "__client=" + rec["client_cookie"],
+                        "Content-Type": "application/x-www-form-urlencoded"},
+               data={"active_organization_id": org}, timeout=30)
+        for c in s.cookies.jar:
+            if c.name == "__client":
+                rec["client_cookie"] = c.value
+        rec["jwt"] = ""  # old jwt has no org claims; gateway will refresh
+        return org
+    except Exception as e:
+        log("activate exc", repr(e)); return ""
 
 def main():
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 1
@@ -332,6 +390,12 @@ def main():
         save_state(st)
         log(f"[{i+1}/{n}] reg {em}")
         rec = register(em, pw)
+        if rec.get("client_cookie") and rec.get("session_id"):
+            org = activate_account(rec)
+            if org:
+                rec["activated"] = True
+                rec["org_id"] = org
+                log("activated", org)
         with open(BANK, "a", encoding="utf-8") as f:
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
         if rec.get("client_cookie") and rec.get("session_id"):

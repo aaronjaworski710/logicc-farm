@@ -217,7 +217,7 @@ export class AccountPool {
     if (!account.clientCookie || !account.sessionId) throw new HttpError(401, 'Session JWT 已过期，请更新 JWT 或配置 __client Cookie 与 Session ID');
     const base = (this.env.LOGICC_CLERK_BASE || 'https://clerk.logicc.com').replace(/\/+$/, '');
     const response = await fetch(`${base}/v1/client/sessions/${encodeURIComponent(account.sessionId)}/tokens`, {
-      method: 'POST', headers: { Cookie: `__client=${account.clientCookie}`, Origin: 'https://app.logicc.com' },
+      method: 'POST', headers: { Cookie: `__client=${account.clientCookie}`, Origin: 'https://app.logicc.com', Referer: 'https://app.logicc.com/', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36' },
       signal: AbortSignal.timeout(20000), redirect: 'error',
     });
     // Clerk 若轮换客户端凭据，保存响应中的新值，重启后仍使用新值。
