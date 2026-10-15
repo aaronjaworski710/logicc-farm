@@ -332,6 +332,53 @@ def chat_test(model):
     return {"ok": code == 200, "code": code, "sec": dt, "reply": txt}
 
 
+OPENCODE_MODELS = ["gpt-6-luna", "gpt-6.1-sol", "gemini-3.8-flash", "gemini-2.5-pro",
+                   "claude-4.5-haiku", "claude-5.5-sonnet", "claude-5.5-opus", "mistral-medium-3.5"]
+
+
+def opencode_snippet(base=None):
+    """Provider block for opencode.json — OpenAI-compatible gateway."""
+    return {
+        "$schema": "https://opencode.ai/config.json",
+        "provider": {
+            "logicc": {
+                "npm": "@ai-sdk/openai-compatible",
+                "name": "Logicc Farm",
+                "options": {"baseURL": (base or GW) + "/v1", "apiKey": "1"},
+                "models": {m: {"name": m} for m in OPENCODE_MODELS},
+            }
+        },
+    }
+
+
+def opencode_install():
+    """1-click: merge logicc provider into the user's global opencode config."""
+    home = os.path.expanduser("~")
+    cfg_dir = os.path.join(home, ".config", "opencode")
+    os.makedirs(cfg_dir, exist_ok=True)
+    path = os.path.join(cfg_dir, "opencode.json")
+    cfg = {}
+    if os.path.exists(path):
+        try:
+            cfg = json.load(open(path, encoding="utf-8"))
+        except Exception:
+            import shutil, time
+            shutil.copy(path, path + ".bak-" + str(int(time.time())))
+            cfg = {}
+    prov = cfg.setdefault("provider", {})
+    prov["logicc"] = opencode_snippet()["provider"]["logicc"]
+    sm = cfg.get("small_model", "")
+    if not sm or "hoplite" in sm:
+        cfg["small_model"] = "logicc/gemini-3.8-flash"
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2, ensure_ascii=False)
+    os.replace(tmp, path)
+    return {"ok": True, "path": path, "models": len(OPENCODE_MODELS),
+            "note": "opencode -> /models -> logicc/*"}
+
+
+
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
@@ -362,6 +409,8 @@ class H(BaseHTTPRequestHandler):
                 self._send({"err": repr(e)}, 500)
         elif p == "/api/bank":
             self._send(bank_view())
+        elif p == "/api/opencode/config":
+            self._send(opencode_snippet())
         elif p.startswith("/api/log"):
             n = 60
             try:
@@ -388,6 +437,8 @@ class H(BaseHTTPRequestHandler):
                 self._send(gw_import())
             elif p == "/api/gateway/restart":
                 self._send(gw_restart())
+            elif p == "/api/opencode/install":
+                self._send(opencode_install())
             elif p == "/api/chat/test":
                 self._send(chat_test(body.get("model", "gpt-6-luna")))
             else:

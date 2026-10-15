@@ -242,6 +242,8 @@
           <div class="flex flex-wrap gap-3">
             <button id="b-activate" class="btn btn-outline">Activate next <span aria-hidden="true">→</span></button>
             <button id="b-import" class="btn btn-outline">Import to gateway</button>
+            <button id="b-opencode" class="btn">&#9889; OpenCode 1-click</button>
+            <button id="b-occopy" class="btn btn-outline">Copy OpenCode config</button>
             <button id="b-gwr" class="btn btn-ghost-destructive sm:ml-auto">Restart gateway</button>
           </div>
           <p id="act-msg" class="mono mt-3 hidden break-words text-[11px] text-muted-foreground" role="status"></p>
@@ -631,6 +633,19 @@
     $('b-activate').onclick = () => act('/api/activate', {}, 'act-msg', refresh, 'b-activate', 'Activate next');
     $('b-import').onclick = () => act('/api/gateway/import', {}, 'act-msg', refresh, 'b-import', 'Gateway import');
     $('b-gwr').onclick = () => act('/api/gateway/restart', {}, 'act-msg', refresh, 'b-gwr', 'Gateway restart');
+    $('b-opencode').onclick = () => act('/api/opencode/install', {}, 'act-msg', refresh, 'b-opencode', 'OpenCode install');
+    $('b-occopy').onclick = async () => {
+      try {
+        const r = await fetch('/api/opencode/config');
+        const txt = JSON.stringify(await r.json(), null, 2);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(txt);
+        } else {
+          const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+        }
+        toast('OpenCode config copied', 'Paste into ~/.config/opencode/opencode.json', true);
+      } catch (e) { toast('Copy failed', e.message, false); }
+    };
 
     $('b-chat').onclick = () => {
       const model = $('chat-model').value;
